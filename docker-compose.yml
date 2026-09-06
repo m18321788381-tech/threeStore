@@ -1,0 +1,90 @@
+# 个人博客 · 生产编排（4 个核心服务）
+#   nginx   反向代理 + 静态资源 + TLS 终止（对外 80/443）
+#   frontend  Next.js standalone（:3000，仅内网）
+#   backend   FastAPI + gunicorn（:8000，仅内网）
+#   db        PostgreSQL 16（数据卷持久化）
+#
+# 设计文档曾规划 6 容器（含 redis / worker）。本仓库把评论限流、Markdown 渲染等
+# 设计为进程内/同步执行，无需独立 worker；redis 作为可选服务见 docker-compose.override.yml。
+# 若要严格 6 容器可在此基础上扩展，请参考 README「扩展」一节。
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-blog}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-blog}
+      POSTGRES_DB: ${DB_NAME:-blog}
+    volumes:
+      - ${POSTGRES_DATA:-blog_pgdata}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-blog} -d ${DB_NAME:-blog}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    # 启动时由镜像 CMD 自动执行 alembic upgrade head，无需手动迁移
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media_data:/app/media
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks: [internal]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        INTERNAL_API_URL: http://backend:8000
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_URL: http://backend:8000
+    depends_on:
+      - backend
+    networks: [internal]
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      # 启用 HTTPS 时取消下行注释，并确保 ssl.conf 已挂载
+      # - "${HTTPS_PORT:-443}:443"
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - media_data:/var/www/media:ro
+      # Let's Encrypt：certbot 校验目录与证书目录（启用 HTTPS 时需要）
+      - ./nginx/certbot:/var/www/certbot:ro
+      - ./nginx/certs:/etc/nginx/ssl:ro
+    networks: [internal, public]
+
+networks:
+  internal:
+    driver: bridge
+  public:
+    driver: bridge
+
+volumes:
+  media_data:

@@ -1,0 +1,49 @@
+# 开发编排：仅启动 数据库 + 后端（热重载）
+# 前端在宿主机用 `npm run dev`（:3000）直接开发，连接到 http://localhost:8000 的后端。
+#
+# 用法：
+#   docker compose -f docker-compose.dev.yml --env-file .env up -d
+# 后端日志：docker compose -f docker-compose.dev.yml logs -f backend
+# 首次启动后初始化管理员：见 README「初始化管理员」
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-blog}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-blog}
+      POSTGRES_DB: ${DB_NAME:-blog}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${POSTGRES_DATA:-blog_pgdata}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-blog} -d ${DB_NAME:-blog}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      APP_ENV: development
+      DEBUG: "true"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  media_data:

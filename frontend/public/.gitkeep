@@ -1,0 +1,2 @@
+# 占位文件：保证 Dockerfile 的 COPY ./public 有目录可复制。
+# 可在此放置 favicon.ico、og-default.png 等静态资源。

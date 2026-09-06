@@ -1,0 +1,43 @@
+# ===== 依赖 / 构建产物 =====
+node_modules/
+.frontend/.next/
+.next/
+out/
+dist/
+build/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.venv-verify/
+**/.venv-verify/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# ===== 运行时数据 =====
+media/
+backend/media/
+*.sqlite3
+*.db
+
+# ===== 编辑器 / 系统 =====
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ===== WorkBuddy / 内部状态（含记忆，勿提交） =====
+.workbuddy/
+.adnify/
+
+# ===== Docker 本地证书（若生成） =====
+nginx/certbot/
+nginx/certs/

@@ -1,0 +1,31 @@
+# ---- Web ----
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+gunicorn==23.0.0
+python-multipart==0.0.20
+
+# ---- DB ----
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# ---- Validation / Config ----
+pydantic==2.10.4
+pydantic-settings==2.7.0
+email-validator==2.2.0
+
+# ---- Auth ----
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+
+# ---- Markdown / Rendering ----
+markdown-it-py==3.0.0
+mdit-py-plugins==0.4.2
+pygments==2.18.0
+bleach[css]==6.2.0
+
+# ---- Utils ----
+python-slugify==8.0.4
+
+# ---- Redis（可选；worker / SEO 缓存 / 未来限流） ----
+redis==5.2.1

@@ -1,0 +1,59 @@
+# 扩展编排：在基础 docker-compose.yml（nginx+frontend+backend+db）之上
+# 追加 redis 与 worker，凑齐设计文档的 6 容器。
+#
+# 用法（多个 -f 叠加）：
+#   docker compose -f docker-compose.yml -f docker-compose.redis.yml --env-file .env up -d --build
+#
+# 说明：
+#   - redis  : 持久化的键值存储（AOF 落盘）
+#   - worker : 后台进程，周期性 + 事件驱动地把 RSS/Sitemap 缓存到 Redis
+#   - backend: 通过 REDIS_URL 接入 Redis，用于 SEO 产物缓存（未配置则降级为按需生成）
+#
+# 注意：本文件只是「扩展」，基础服务（db/backend/frontend/nginx）仍由 docker-compose.yml 定义。
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    # 先迁移再启动 worker（依赖 db + redis 均健康）
+    command: sh -c "alembic upgrade head && python scripts/worker.py"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [internal]
+
+  # 让后端也连上 Redis（SEO 缓存）；仅追加环境变量与依赖，不影响原有配置
+  backend:
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  redis_data:
