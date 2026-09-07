@@ -1,4 +1,14 @@
 /** 站点级配置：优先读环境变量，缺省值保证本地可跑。 */
+const SITE_URL_FALLBACK = "http://localhost:3000";
+
+/** 兼容 .env 里写成 blog.example.com 这种漏掉协议的地址，避免 new URL 抛 Invalid URL。 */
+function normalizeBaseUrl(value: string | undefined): string {
+  const trimmed = (value || "").trim().replace(/\/+$/, "");
+  if (!trimmed) return SITE_URL_FALLBACK;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export const siteConfig = {
   title: process.env.NEXT_PUBLIC_SITE_TITLE || "三石笔记",
   description:
@@ -9,7 +19,7 @@ export const siteConfig = {
     process.env.NEXT_PUBLIC_SITE_BIO ||
     "后端工程师。写点关于 Python、前后端工程与知识管理的笔记。",
   avatar: process.env.NEXT_PUBLIC_SITE_AVATAR || "",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  url: normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL),
   locale: "zh-CN",
   nav: [
     { href: "/", label: "首页" },

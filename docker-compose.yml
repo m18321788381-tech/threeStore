@@ -60,10 +60,13 @@ services:
       dockerfile: Dockerfile
       args:
         INTERNAL_API_URL: http://backend:8000
+        # canonical / OG / metadataBase 用站点对外地址
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL:-http://localhost}
         NPM_REGISTRY: ${NPM_REGISTRY:-https://mirrors.cloud.tencent.com/npm/}
     restart: unless-stopped
     environment:
       INTERNAL_API_URL: http://backend:8000
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL:-http://localhost}
     depends_on:
       - backend
     networks: [internal]

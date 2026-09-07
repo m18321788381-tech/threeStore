@@ -25,12 +25,18 @@ export const INTERNAL_API =
 
 export const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "/api/v1";
 
+/**
+ * 拼接请求地址。base 传空串表示浏览器侧同源请求（由 next.config 反代到 backend），
+ * 此时必须给 URL 一个绝对基底，否则 new URL("/api/v1/...") 会抛 Invalid URL。
+ */
 export function buildUrl(
   base: string,
   path: string,
   params?: Record<string, string | number | undefined | null>
 ) {
-  const url = new URL(`${base}${path}`);
+  const origin =
+    typeof window === "undefined" ? INTERNAL_API : window.location.origin;
+  const url = new URL(`${base}${path}`, origin);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value === undefined || value === null || value === "") return;
