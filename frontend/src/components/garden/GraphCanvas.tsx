@@ -293,11 +293,11 @@ export function GraphCanvas({ data }: { data: GraphData }) {
 
       <div
         ref={wrapRef}
-        className="relative h-[420px] w-full overflow-hidden rounded-xl border border-border bg-surface/40 sm:h-[560px]"
+        className="relative h-[420px] w-full overflow-hidden rounded-panel border border-border bg-surface/40 sm:h-[560px]"
       >
         <canvas ref={canvasRef} className="block h-full w-full" />
         {hovered && (
-          <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
+          <div className="pointer-events-none absolute bottom-3 left-3 rounded-btn border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
             <b>{hovered.title}</b>
             <span className="ml-2 text-muted">被引用 {hovered.degree} 次</span>
           </div>

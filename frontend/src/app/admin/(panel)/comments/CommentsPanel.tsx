@@ -6,19 +6,30 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Skeleton } from "@/components/common/Skeleton";
-import { formatDateTime } from "@/lib/utils";
+import { TablePager } from "@/components/common/TablePager";
+import { cn, formatDateTime } from "@/lib/utils";
 import type { Paginated, AdminComment } from "@/types";
 
 const STATUS: Record<number, { label: string; className: string }> = {
-  0: { label: "待审", className: "badge badge-warning" },
-  1: { label: "已通过", className: "badge badge-success" },
-  2: { label: "已驳回", className: "badge badge-error" },
-  3: { label: "垃圾", className: "badge badge-muted" },
+  0: { label: "待审", className: "badge-warning" },
+  1: { label: "已通过", className: "badge-success" },
+  2: { label: "已驳回", className: "badge-error" },
+  3: { label: "垃圾", className: "badge-muted" },
 };
 
-export function CommentsPanel() {
+const FILTERS: Array<{ label: string; value: number | undefined }> = [
+  { label: "待审", value: 0 },
+  { label: "已通过", value: 1 },
+  { label: "已驳回", value: 2 },
+  { label: "垃圾", value: 3 },
+  { label: "全部", value: undefined },
+];
+
+export function CommentsPanel({ initialStatus }: { initialStatus?: number }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<number | undefined>(0);
+  const [status, setStatus] = useState<number | undefined>(
+    initialStatus === undefined ? 0 : initialStatus
+  );
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -48,70 +59,48 @@ export function CommentsPanel() {
     ({ page: 1, page_size: 20, items: [], pages: 0, total: 0 } as Paginated<AdminComment>);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { label: "待审", value: 0 },
-          { label: "已通过", value: 1 },
-          { label: "已驳回", value: 2 },
-          { label: "垃圾", value: 3 },
-        ].map((item) => (
+    <div className="space-y-5">
+      <div className="toolbar">
+        {FILTERS.map((item) => (
           <button
             key={item.label}
             type="button"
+            aria-pressed={status === item.value}
             onClick={() => {
               setStatus(item.value);
               setPage(1);
             }}
-            className={`chip ${status === item.value ? "border-accent bg-accent-soft text-accent" : ""}`}
+            className={cn("chip cursor-pointer", status === item.value && "chip-active")}
           >
             {item.label}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => {
-            setStatus(undefined);
-            setPage(1);
-          }}
-          className={`chip ${status === undefined ? "border-accent bg-accent-soft text-accent" : ""}`}
-        >
-          全部
-        </button>
-        <span className="ml-auto text-xs text-muted">共 {result.total} 条</span>
+        <span className="ml-auto text-meta tabular-nums text-muted">共 {result.total} 条</span>
       </div>
 
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-24" />
           ))}
         </div>
       ) : result.items.length === 0 ? (
-        <EmptyState title="没有符合条件的评论" />
+        <EmptyState title="没有符合条件的评论" description="切换上面的筛选状态试试。" />
       ) : (
         <ul className="space-y-3">
           {result.items.map((c) => {
-            const meta = STATUS[c.status] || STATUS[0];
+            const meta = STATUS[c.status] ?? STATUS[0];
             return (
               <li key={c.id} className="card p-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-medium text-foreground">{c.author_name}</span>
-                  {c.is_author && (
-                    <span className="badge badge-accent">
-                      作者
-                    </span>
-                  )}
-                  <span className={meta.className}>
-                    {meta.label}
-                  </span>
-                  {c.is_pinned && (
-                    <span className="badge badge-muted">
-                      置顶
-                    </span>
-                  )}
-                  <span className="text-muted">{formatDateTime(c.created_at)}</span>
-                  <span className="ml-auto font-mono text-[11px] text-muted">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-meta">
+                  <span className="font-semibold text-foreground">{c.author_name}</span>
+                  {c.is_author && <span className="author-badge">作者</span>}
+                  <span className={meta.className}>{meta.label}</span>
+                  {c.is_pinned && <span className="badge badge-muted">置顶</span>}
+                  <time className="ml-auto whitespace-nowrap text-muted tabular-nums">
+                    {formatDateTime(c.created_at)}
+                  </time>
+                  <span className="whitespace-nowrap font-mono text-[11px] text-muted">
                     {c.ip_address}
                   </span>
                 </div>
@@ -120,15 +109,15 @@ export function CommentsPanel() {
                   {c.content}
                 </p>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
                   <Link
                     href={`/posts/${c.post_slug}`}
-                    className="text-muted hover:text-accent"
+                    className="min-w-0 truncate text-meta text-muted transition-colors hover:text-accent"
                   >
                     → {c.post_title}
                   </Link>
 
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto flex flex-wrap items-center gap-1.5 text-xs">
                     {c.status !== 1 && (
                       <button
                         type="button"
@@ -179,29 +168,7 @@ export function CommentsPanel() {
         </ul>
       )}
 
-      {result.pages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="chip h-8 disabled:opacity-50"
-          >
-            上一页
-          </button>
-          <span className="text-sm text-muted">
-            {page} / {result.pages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= result.pages}
-            onClick={() => setPage((p) => p + 1)}
-            className="chip h-8 disabled:opacity-50"
-          >
-            下一页
-          </button>
-        </div>
-      )}
+      <TablePager page={result.page} pages={result.pages} onChange={setPage} />
     </div>
   );
 }

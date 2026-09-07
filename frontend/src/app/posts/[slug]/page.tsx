@@ -84,38 +84,36 @@ export default async function PostPage({ params }: Props) {
   };
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_220px]">
+    <div className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_300px]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <article className="min-w-0">
+      <article className="min-w-0 max-w-content">
         <header className="mb-8">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-            <time dateTime={post.published_at || undefined}>
-              {formatDate(post.published_at)}
-            </time>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-meta text-muted">
+            {post.category && (
+              <Link
+                href={`/categories/${post.category.slug}`}
+                className="cat-pill"
+              >
+                {post.category.name}
+              </Link>
+            )}
+            <time dateTime={post.published_at || undefined}>{formatDate(post.published_at)}</time>
             <span aria-hidden>·</span>
             <span>{readingTimeLabel(post.reading_time)}</span>
             <span aria-hidden>·</span>
-            <span>{post.view_count} 次阅读</span>
-            {post.category && (
-              <>
-                <span aria-hidden>·</span>
-                <Link href={`/categories/${post.category.slug}`} className="hover:text-accent">
-                  {post.category.name}
-                </Link>
-              </>
-            )}
+            <span className="tabular-nums">{post.view_count} 次阅读</span>
           </div>
 
-          <h1 className="page-title mt-4 sm:text-[2.125rem]">
+          <h1 className="mt-3.5 text-[27px] font-bold leading-tight tracking-tight sm:text-[32px]">
             {post.title}
           </h1>
 
           {post.summary && (
-            <p className="mt-5 border-l-2 border-accent/60 pl-4 text-lead leading-relaxed text-muted">
+            <p className="mt-5 border-l-4 border-accent/60 pl-4 text-lead leading-relaxed text-muted">
               {post.summary}
             </p>
           )}
@@ -135,16 +133,15 @@ export default async function PostPage({ params }: Props) {
 
         <ViewCounter slug={post.slug} />
 
-        {links && <Backlinks data={links} />}
-
         <PostPager prev={post.prev} next={post.next} />
 
         <CommentSection slug={post.slug} />
       </article>
 
       <aside className="hidden lg:block">
-        <div className="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto pb-6">
-          <TOC items={post.toc || []} />
+        <div className="sticky top-[84px] max-h-[calc(100vh-6.5rem)] space-y-5 overflow-y-auto pb-6">
+          {post.toc?.length ? <TOC items={post.toc} /> : null}
+          {links && <Backlinks data={links} />}
         </div>
       </aside>
     </div>

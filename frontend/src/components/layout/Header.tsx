@@ -3,14 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { siteConfig } from "@/lib/site";
+import { brandParts, siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+
+/** 34x34 描边图标按钮，对齐设计稿 .icon-btn */
+export const iconBtnClass =
+  "grid h-[34px] w-[34px] place-items-center rounded-btn border border-border text-muted transition-colors hover:border-accent hover:text-accent";
 
 export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const brand = brandParts();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -29,29 +34,24 @@ export function Header() {
       )}
     >
       <div className="container-page flex h-16 items-center gap-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent">
-            {siteConfig.title.slice(0, 1)}
-          </span>
-          <span className="text-body font-semibold tracking-tight">
-            {siteConfig.title}
-          </span>
+        <Link href="/" className="shrink-0 text-[19px] font-extrabold tracking-tight">
+          {brand.prefix}
+          {brand.suffix && <span className="text-accent">{brand.suffix}</span>}
         </Link>
 
-        <nav className="hidden flex-1 items-center gap-1 md:flex">
+        <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label="主导航">
           {siteConfig.nav.map((item) => {
             const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-sm transition-colors",
+                  "rounded-btn px-3 py-1.5 text-sm transition-colors",
                   active
-                    ? "bg-accent-soft text-accent"
+                    ? "bg-accent-soft font-medium text-accent"
                     : "text-muted hover:text-foreground"
                 )}
               >
@@ -62,19 +62,19 @@ export function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/search"
-            aria-label="搜索"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted transition-colors hover:border-accent hover:text-accent"
-          >
+          <Link href="/search" aria-label="搜索" className={iconBtnClass}>
             <span aria-hidden>⌕</span>
           </Link>
           <ThemeSwitcher />
+          <Link href="/admin" className="btn-ghost btn-sm ml-1 hidden md:inline-flex">
+            后台
+          </Link>
           <button
             type="button"
             aria-label="菜单"
+            aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted md:hidden"
+            className={cn(iconBtnClass, "md:hidden")}
           >
             <span aria-hidden>{open ? "✕" : "☰"}</span>
           </button>
@@ -82,20 +82,30 @@ export function Header() {
       </div>
 
       {open && (
-        <nav className="border-t border-border bg-background md:hidden">
+        <nav className="border-t border-border bg-background md:hidden" aria-label="移动导航">
           <div className="container-page grid gap-1 py-3">
-            {siteConfig.nav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-accent-soft hover:text-accent"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {siteConfig.nav.map((item) => {
+              const active =
+                item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "rounded-btn px-3 py-2 text-sm transition-colors",
+                    active
+                      ? "bg-accent-soft font-medium text-accent"
+                      : "text-muted hover:bg-accent-soft hover:text-accent"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
             <Link
               href="/admin"
-              className="rounded-lg px-3 py-2 text-sm text-muted hover:bg-accent-soft hover:text-accent"
+              className="rounded-btn px-3 py-2 text-sm text-muted hover:bg-accent-soft hover:text-accent"
             >
               后台
             </Link>

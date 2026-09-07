@@ -31,17 +31,15 @@ export function TOC({ items }: { items: TocItem[] }) {
   if (!items.length) return null;
 
   return (
-    <nav aria-label="目录" className="text-sm">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-        本页目录
-      </p>
-      <ul className="space-y-1 border-l border-border">
+    <nav aria-label="目录" className="widget text-sm">
+      <p className="widget-title">本页目录</p>
+      <ul className="mt-3 space-y-1 border-l border-border">
         {items.map((item) => (
           <li key={item.anchor}>
             <a
               href={`#${item.anchor}`}
               className={cn(
-                "-ml-px block border-l py-1 pr-2 text-[13px] leading-snug transition-colors",
+                "-ml-px block border-l py-1 pr-2 text-meta leading-snug transition-colors",
                 item.level >= 3 ? "pl-7" : "pl-4",
                 activeId === item.anchor
                   ? "border-accent text-accent"

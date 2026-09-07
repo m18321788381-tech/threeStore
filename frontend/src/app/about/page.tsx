@@ -39,7 +39,7 @@ export default function AboutPage() {
     <div className="mx-auto max-w-content">
       <header className="page-head">
         <div className="flex items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-xl font-bold text-on-accent">
+          <span className="grid h-14 w-14 place-items-center rounded-panel bg-accent text-xl font-bold text-on-accent">
             {siteConfig.author.slice(0, 1)}
           </span>
           <div>

@@ -8,18 +8,19 @@ import { Skeleton } from "@/components/common/Skeleton";
 import type { StatsOverview } from "@/types";
 
 function StatCard({ label, value, href }: { label: string; value: number; href?: string }) {
-  const body = (
-    <div className="card p-5">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
-    </div>
+  const inner = (
+    <>
+      <span className="stat-value tabular-nums">{value.toLocaleString("zh-CN")}</span>
+      <span className="stat-label">{label}</span>
+    </>
   );
+
   return href ? (
-    <Link href={href} className="transition-colors hover:border-accent/60">
-      {body}
+    <Link href={href} className="stat block transition-colors hover:border-accent">
+      {inner}
     </Link>
   ) : (
-    body
+    <div className="stat">{inner}</div>
   );
 }
 
@@ -31,9 +32,9 @@ export function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <Skeleton key={index} className="h-[104px]" />
         ))}
       </div>
     );
@@ -51,21 +52,28 @@ export function Dashboard() {
   const s = data as StatsOverview;
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <StatCard label="文章总数" value={s.post_count} href="/admin/posts" />
-        <StatCard label="已发布" value={s.published_count} href="/admin/posts" />
-        <StatCard label="草稿" value={s.draft_count} href="/admin/posts" />
-        <StatCard label="待审评论" value={s.pending_comment_count} href="/admin/comments" />
-        <StatCard label="评论总数" value={s.comment_count} href="/admin/comments" />
-        <StatCard label="总阅读量" value={s.total_views} />
-        <StatCard label="分类 / 标签" value={s.category_count} href="/admin/categories" />
-        <StatCard label="双向链接" value={s.link_count} href="/garden" />
-      </div>
+    <div className="space-y-9">
+      <section aria-labelledby="stats-heading">
+        <h2 id="stats-heading" className="side-title mb-3">
+          内容概览
+        </h2>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="文章总数" value={s.post_count} href="/admin/posts" />
+          <StatCard label="已发布" value={s.published_count} href="/admin/posts?status=1" />
+          <StatCard label="草稿" value={s.draft_count} href="/admin/posts?status=0" />
+          <StatCard label="总阅读量" value={s.total_views} />
+          <StatCard label="评论总数" value={s.comment_count} href="/admin/comments" />
+          <StatCard label="待审评论" value={s.pending_comment_count} href="/admin/comments?status=0" />
+          <StatCard label="分类 / 标签" value={s.category_count + s.tag_count} />
+          <StatCard label="媒体 / 外链" value={s.media_count + s.link_count} />
+        </div>
+      </section>
 
-      <section>
-        <h2 className="side-title">快捷操作</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
+      <section aria-labelledby="quick-heading">
+        <h2 id="quick-heading" className="side-title mb-3">
+          快捷操作
+        </h2>
+        <div className="flex flex-wrap gap-2">
           <Link href="/admin/posts/new" className="btn-primary btn-sm">
             写新文章
           </Link>

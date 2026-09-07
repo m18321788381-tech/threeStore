@@ -2,51 +2,44 @@ import Link from "next/link";
 import type { PostListItem } from "@/types";
 import { formatDate, readingTimeLabel } from "@/lib/utils";
 
-export function PostCard({ post, dense = false }: { post: PostListItem; dense?: boolean }) {
+/** 列表行：对齐设计稿 V-01 .post-card —— 用分隔线成组，不做卡片阴影。 */
+export function PostCard({ post }: { post: PostListItem }) {
   return (
-    <article className="card card-hover group p-5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-        <time dateTime={post.published_at || undefined}>
-          {formatDate(post.published_at)}
-        </time>
+    <article className="post-row group">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-muted">
+        {post.category && (
+          <Link
+            href={`/categories/${post.category.slug}`}
+            className="cat-pill"
+          >
+            {post.category.name}
+          </Link>
+        )}
+        <time dateTime={post.published_at || undefined}>{formatDate(post.published_at)}</time>
         <span aria-hidden>·</span>
         <span>{readingTimeLabel(post.reading_time)}</span>
-        {post.category && (
-          <>
-            <span aria-hidden>·</span>
-            <Link href={`/categories/${post.category.slug}`} className="hover:text-accent">
-              {post.category.name}
-            </Link>
-          </>
-        )}
-        {post.status === 0 && (
-          <span className="badge badge-accent">草稿</span>
-        )}
+        {post.status === 0 && <span className="badge badge-warning">草稿</span>}
       </div>
 
-      <h2 className={dense ? "mt-2 text-base font-semibold" : "mt-2.5 text-lg font-semibold"}>
-        <Link href={`/posts/${post.slug}`} className="hover:text-accent">
-          {post.title}
-        </Link>
+      <h2 className="post-row-title mt-2">
+        <Link href={`/posts/${post.slug}`}>{post.title}</Link>
       </h2>
 
       {post.summary && (
-        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">
-          {post.summary}
-        </p>
+        <p className="mt-2 line-clamp-2 leading-relaxed text-muted">{post.summary}</p>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2">
         {(post.tags || []).slice(0, 4).map((tag) => (
           <Link
             key={tag.slug}
             href={`/tags/${tag.slug}`}
-            className="chip-sm"
+            className="text-xs text-muted transition-colors hover:text-accent"
           >
             #{tag.name}
           </Link>
         ))}
-        <span className="ml-auto flex items-center gap-3 text-xs text-muted">
+        <span className="ml-auto flex items-center gap-4 text-xs text-muted tabular-nums">
           <span>{post.view_count} 阅读</span>
           <span>{post.comment_count} 评论</span>
         </span>

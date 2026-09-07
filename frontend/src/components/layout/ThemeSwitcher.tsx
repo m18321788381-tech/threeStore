@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /* 预设三套主题，与 globals.css 中的 .light / .sepia / .dark 一一对应 */
 const THEMES = [
-  { value: "light", label: "清朗", desc: "冷灰白 · 日间与代码阅读", icon: "☀", meta: "#fcfcfd" },
+  { value: "light", label: "清朗", desc: "冷灰白 · 日间与代码阅读", icon: "☀", meta: "#ffffff" },
   { value: "sepia", label: "纸墨", desc: "暖米色 · 长时间阅读护眼", icon: "❖", meta: "#faf6ec" },
   { value: "dark", label: "夜读", desc: "低亮深蓝 · 夜间不刺眼", icon: "☾", meta: "#0e141f" },
 ];
@@ -102,7 +102,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
         aria-label={mounted ? "切换主题，当前为" + current.label : "切换主题"}
         title="切换主题"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-2 text-muted transition-colors hover:border-accent hover:text-accent"
+        className="inline-flex h-[34px] items-center gap-1.5 rounded-btn border border-border px-2 text-muted transition-colors hover:border-accent hover:text-accent"
       >
         {/* 未挂载前只渲染占位图标，避免服务端与客户端不一致 */}
         <span aria-hidden className="text-base leading-none">
@@ -122,7 +122,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
           role="menu"
           aria-label="选择主题"
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5"
+          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-modal border border-border bg-card shadow-raised"
         >
           {THEMES.map((item, index) => {
             const selected = item.value === current.value;
@@ -144,7 +144,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
               >
                 <span
                   aria-hidden
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border text-sm"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-btn border border-border text-sm"
                 >
                   {item.icon}
                 </span>

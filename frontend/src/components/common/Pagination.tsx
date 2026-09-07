@@ -47,9 +47,9 @@ export function Pagination({
             href={pageHref(basePath, item, query)}
             aria-current={item === page ? "page" : undefined}
             className={cn(
-              "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2.5 text-sm transition-colors",
+              "inline-flex h-8 min-w-8 items-center justify-center rounded-btn border px-2.5 text-sm tabular-nums transition-colors",
               item === page
-                ? "border-accent bg-accent-soft text-accent"
+                ? "chip-active"
                 : "border-border text-muted hover:border-accent hover:text-accent"
             )}
           >

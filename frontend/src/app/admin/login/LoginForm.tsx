@@ -28,7 +28,7 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={submit} className="mt-8 space-y-4 rounded-xl border border-border p-6">
+    <form onSubmit={submit} className="mt-7 space-y-4 text-left">
       <div>
         <label htmlFor="username" className="field-label">
           用户名
@@ -38,6 +38,7 @@ export function LoginForm() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
+          autoFocus
           className="input"
         />
       </div>
@@ -56,15 +57,15 @@ export function LoginForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-error">{error}</p>}
+      {error && (
+        <p role="alert" className="text-meta text-error">
+          {error}
+        </p>
+      )}
 
       <button type="submit" disabled={loading} className="btn-primary w-full">
         {loading ? "登录中…" : "登录"}
       </button>
-
-      <p className="text-center text-xs text-muted">
-        默认账号来自后端 .env：ADMIN_USERNAME / ADMIN_PASSWORD
-      </p>
     </form>
   );
 }

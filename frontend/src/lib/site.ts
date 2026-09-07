@@ -19,6 +19,8 @@ export const siteConfig = {
     process.env.NEXT_PUBLIC_SITE_BIO ||
     "后端工程师。写点关于 Python、前后端工程与知识管理的笔记。",
   avatar: process.env.NEXT_PUBLIC_SITE_AVATAR || "",
+  /** 站名尾段：设计稿 brand 用强调色区分主体与后缀（Yuan + .dev）。 */
+  brandSuffix: process.env.NEXT_PUBLIC_SITE_BRAND_SUFFIX || "笔记",
   url: normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL),
   locale: "zh-CN",
   nav: [
@@ -34,6 +36,16 @@ export const siteConfig = {
     { href: "mailto:admin@example.com", label: "Email" },
   ],
 };
+
+/** 拆出站名的主体与后缀两段，供 Header / Footer 渲染品牌强调色。 */
+export function brandParts(): { prefix: string; suffix: string } {
+  const suffix = siteConfig.brandSuffix;
+  const prefix =
+    suffix && siteConfig.title.endsWith(suffix)
+      ? siteConfig.title.slice(0, -suffix.length)
+      : "";
+  return prefix ? { prefix, suffix } : { prefix: siteConfig.title, suffix: "" };
+}
 
 export function absoluteUrl(path = "/") {
   return new URL(path, siteConfig.url).toString();

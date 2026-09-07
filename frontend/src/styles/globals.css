@@ -6,61 +6,65 @@
 /* ------------------------------------------------------------------ 设计系统 */
 /* 对应设计文档 §6.1：内容优先、阅读友好、克制留白 */
 @layer base {
-  /* 主题一 · 清朗：冷灰白，日间与代码阅读。默认跟随系统浅色。 */
+  /* 主题一 · 清朗：对齐设计稿 V-01~V-08 的 slate 冷灰白体系。默认跟随系统浅色。 */
   :root,
   .light {
     color-scheme: light;
-    --bg: #fcfcfd;
-    --surface: #f5f6f8;
-    --fg: #1a1f2b;
-    --fg-muted: #5f6a7a;
-    --border: #e3e6ea;
-    --border-strong: #838c99;
+    --bg: #ffffff;
+    --card: #ffffff;
+    --surface: #f1f5f9;
+    --fg: #1e293b;
+    --fg-muted: #5b6b7f;
+    --border: #e2e8f0;
+    --border-strong: #808b99;
     --accent: #2563eb;
-    --accent-soft: rgba(37, 99, 235, 0.08);
+    --accent-soft: #eff6ff;
     --on-accent: #ffffff;
-    --code-bg: #f6f7f9;
+    --code-bg: #f8fafc;
     --term-bg: #1e293b;
     --term-fg: #e2e8f0;
-    --success: #15803d;
-    --warning: #b45309;
+    --success: #166534;
+    --warning: #92400e;
     --error: #b91c1c;
-    --info: #0369a1;
-    /* RGB 通道版：供 Tailwind 透明度修饰符（如 bg-surface/60）使用 */
-    --bg-rgb: 252 252 253;
-    --surface-rgb: 245 246 248;
-    --fg-rgb: 26 31 43;
-    --fg-muted-rgb: 95 106 122;
-    --border-rgb: 227 230 234;
-    --border-strong-rgb: 131 140 153;
+    --info: #0e7490;
+    /* RGB 通道版：供 Tailwind 透明度修饰符使用 */
+    --bg-rgb: 255 255 255;
+    --card-rgb: 255 255 255;
+    --surface-rgb: 241 245 249;
+    --fg-rgb: 30 41 59;
+    --fg-muted-rgb: 91 107 127;
+    --border-rgb: 226 232 240;
+    --border-strong-rgb: 128 139 153;
     --accent-rgb: 37 99 235;
-    --code-bg-rgb: 246 247 249;
-    --success-rgb: 21 128 61;
-    --warning-rgb: 180 83 9;
+    --code-bg-rgb: 248 250 252;
+    --success-rgb: 22 101 52;
+    --warning-rgb: 146 64 14;
     --error-rgb: 185 28 28;
-    --info-rgb: 3 105 161;
+    --info-rgb: 14 116 144;
   }
 
-  /* 主题二 · 纸墨：暖米色低刺激，长时间阅读首选。 */
+  /* 主题二 · 纸墨：暖米色低刺激。角色与清朗一一对应。 */
   .sepia {
     color-scheme: light;
     --bg: #faf6ec;
+    --card: #fffcf4;
     --surface: #f2ebdb;
     --fg: #3a3226;
     --fg-muted: #6b604d;
     --border: #e0d6c1;
     --border-strong: #8f7e66;
     --accent: #8a4b1f;
-    --accent-soft: rgba(138, 75, 31, 0.1);
+    --accent-soft: #f6e8dc;
     --on-accent: #faf6ec;
     --code-bg: #f3ecdd;
     --term-bg: #3a3226;
     --term-fg: #f2ebdb;
-    --success: #4d6b28;
-    --warning: #9a5f10;
+    --success: #3f6212;
+    --warning: #92400e;
     --error: #a3311f;
-    --info: #4a6076;
+    --info: #1d5c73;
     --bg-rgb: 250 246 236;
+    --card-rgb: 255 252 244;
     --surface-rgb: 242 235 219;
     --fg-rgb: 58 50 38;
     --fg-muted-rgb: 107 96 77;
@@ -68,42 +72,44 @@
     --border-strong-rgb: 143 126 102;
     --accent-rgb: 138 75 31;
     --code-bg-rgb: 243 236 221;
-    --success-rgb: 77 107 40;
-    --warning-rgb: 154 95 16;
+    --success-rgb: 63 98 18;
+    --warning-rgb: 146 64 14;
     --error-rgb: 163 49 31;
-    --info-rgb: 74 96 118;
+    --info-rgb: 29 92 115;
   }
 
-  /* 主题三 · 夜读：低亮深蓝，夜间护眼。沿用 .dark 类名以复用语法高亮覆写。 */
+  /* 主题三 · 夜读：低亮深蓝。沿用 .dark 类名以复用语法高亮覆写。 */
   .dark {
     color-scheme: dark;
     --bg: #0e141f;
-    --surface: #161d2b;
+    --card: #161d2b;
+    --surface: #1b2432;
     --fg: #dfe6ef;
     --fg-muted: #96a3b4;
     --border: #253044;
     --border-strong: #59708f;
     --accent: #6ea8fe;
-    --accent-soft: rgba(110, 168, 254, 0.16);
+    --accent-soft: #1b283c;
     --on-accent: #0b1220;
     --code-bg: #131a26;
     --term-bg: #080d15;
     --term-fg: #4ade80;
-    --success: #4ade80;
-    --warning: #fbbf24;
-    --error: #f87171;
+    --success: #5ee08a;
+    --warning: #fcd34d;
+    --error: #fca5a5;
     --info: #7dd3fc;
     --bg-rgb: 14 20 31;
-    --surface-rgb: 22 29 43;
+    --card-rgb: 22 29 43;
+    --surface-rgb: 27 36 50;
     --fg-rgb: 223 230 239;
     --fg-muted-rgb: 150 163 180;
     --border-rgb: 37 48 68;
     --border-strong-rgb: 89 112 143;
     --accent-rgb: 110 168 254;
     --code-bg-rgb: 19 26 38;
-    --success-rgb: 74 222 128;
-    --warning-rgb: 251 191 36;
-    --error-rgb: 248 113 113;
+    --success-rgb: 94 224 138;
+    --warning-rgb: 252 211 77;
+    --error-rgb: 252 165 165;
     --info-rgb: 125 211 252;
   }
 
@@ -174,12 +180,12 @@
   }
   /* 侧栏与卡片内的小标题 */
   .side-title {
-    @apply text-sm font-semibold tracking-tight;
+    @apply text-xs font-semibold uppercase tracking-wider text-muted;
   }
 
   /* ---------------------------------------------------------------- 卡片 */
   .card {
-    @apply rounded-xl border border-border bg-surface/60 transition-colors;
+    @apply rounded-panel border border-border bg-card shadow-panel transition-colors;
   }
   .card-hover {
     @apply hover:border-accent hover:shadow-sm hover:shadow-black/5;
@@ -193,10 +199,15 @@
     @apply chip px-2 py-0.5 text-xs;
   }
 
+  /* 筛选类 chip 的选中态修饰，避免各页面重复拼接长串工具类 */
+  .chip-active {
+    @apply border-accent bg-accent-soft font-semibold text-accent;
+  }
+
   /* ---------------------------------------------------------------- 按钮 */
   /* 统一带 1px 透明边框，避免实心与描边按钮高度不一致 */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-btn border border-transparent px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
     @apply btn bg-accent text-on-accent hover:bg-accent/90;
@@ -211,7 +222,7 @@
 
   /* 列表行内小操作按钮：统一高度、圆角与悬停反馈 */
   .row-action {
-    @apply inline-flex items-center justify-center rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center rounded-btn border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50;
   }
   .row-action-danger {
     @apply row-action text-error hover:border-error hover:text-error;
@@ -237,12 +248,116 @@
     @apply badge bg-muted/10 text-muted;
   }
 
+  /* 分类胶囊（原型 .cat）：柔和强调底 + 强调色文字 */
+  .cat-pill {
+    @apply rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent transition-opacity hover:opacity-80;
+  }
+
   /* ------------------------------------------------------------ 表单控件 */
   .input {
-    @apply w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent;
+    @apply w-full rounded-btn border border-border-strong bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent;
   }
   .field-label {
     @apply mb-1.5 block text-sm font-medium;
+  }
+
+  /* 搜索框（原型 .search-box）：输入与按钮组成一个整体 */
+  .search-box {
+    @apply flex w-full items-center gap-2.5;
+  }
+
+  /* ------------------------------------------------ 侧栏小组件（原型 .widget） */
+  .widget {
+    @apply rounded-panel border border-border bg-card p-5;
+  }
+  .widget-title {
+    @apply side-title mb-3 block;
+  }
+  .widget-list {
+    @apply space-y-2 text-sm text-muted;
+  }
+
+  /* ----------------------------------------- 列表行（原型 .post-card：非卡片） */
+  .post-row {
+    @apply border-b border-border py-6 last:border-b-0;
+  }
+  .post-row-title {
+    @apply text-[22px] font-bold leading-snug tracking-tight transition-colors group-hover:text-accent;
+  }
+
+  /* 提示块（原型 .callout）：4px 左强调边 + 柔和底色 */
+  .callout {
+    @apply rounded-r-btn border-l-4 border-accent bg-accent-soft px-4 py-3 text-sm;
+  }
+
+  /* 头像与作者徽标（原型 .avatar / .author-badge） */
+  .avatar {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-on-accent;
+  }
+  .avatar-muted {
+    @apply border border-border bg-surface font-medium text-muted;
+  }
+  /* 原型为实心 accent + 反白文字，比柔和底色更能标明身份 */
+  .author-badge {
+    @apply inline-flex items-center rounded-full bg-accent px-1.5 py-px text-[11px] font-bold text-on-accent;
+  }
+  /* 待审核整条降透明，配实心 warn 徽标 */
+  .comment-pending {
+    @apply opacity-60;
+  }
+  .comment-row {
+    @apply flex gap-3 border-b border-border py-4 last:border-b-0;
+  }
+
+  /* 搜索命中高亮（原型 .kw） */
+  .kw {
+    @apply rounded-sm bg-warning/20 px-0.5 text-foreground;
+  }
+
+  /* 统计块（原型 .stat） */
+  .stat {
+    @apply rounded-panel border border-border bg-card p-4;
+  }
+  .stat-value {
+    @apply block text-[28px] font-bold leading-none tracking-tight;
+  }
+  .stat-label {
+    @apply mt-2 block text-xs text-muted;
+  }
+
+  /* 面板头（原型 .page-head）：标题居左、操作居右 */
+  .panel-head {
+    @apply mb-6 flex flex-wrap items-center justify-between gap-3;
+  }
+  .panel-title {
+    @apply text-[22px] font-bold tracking-tight;
+  }
+  .toolbar {
+    @apply mb-5 flex flex-wrap items-center gap-2.5;
+  }
+
+  /* 后台数据表（原型 table/th/td） */
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table th {
+    @apply border-b border-border px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted;
+  }
+  .data-table td {
+    @apply border-b border-border px-3 py-3 align-middle;
+  }
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  /* 评论表单底色（原型 .comment-form） */
+  .comment-form {
+    @apply rounded-panel bg-surface p-4;
+  }
+
+  /* 归档分组标题（原型 .archive-group h3） */
+  .group-title {
+    @apply border-b border-border pb-2 text-[15px] font-semibold text-muted;
   }
 }
 
@@ -298,14 +413,18 @@
   color: var(--fg-muted);
 }
 .prose-blog blockquote {
-  border-left: 3px solid var(--accent);
-  background: var(--surface);
-  padding: 0.8em 1.1em;
+  /* 对齐原型 .callout：4px 强调左边 + accent-soft 底 */
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 0.85em 1.15em;
   border-radius: 0 8px 8px 0;
-  color: var(--fg-muted);
+  color: var(--fg);
 }
 .prose-blog blockquote p {
-  color: var(--fg-muted);
+  color: var(--fg);
+}
+.prose-blog blockquote p:not(:last-child) {
+  margin-bottom: 0.4em;
 }
 .prose-blog img {
   border-radius: 12px;

@@ -87,7 +87,7 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
   const unresolved = wikiTargets.filter((w) => !w.exists);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className="overflow-hidden rounded-panel border border-border">
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-1 border-b border-border bg-surface/60 px-2 py-1.5">
         {TOOLBAR.map((item) => (

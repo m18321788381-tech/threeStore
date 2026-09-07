@@ -23,6 +23,7 @@ const config: Config = {
         },
         code: "rgb(var(--code-bg-rgb) / <alpha-value>)",
         "on-accent": "var(--on-accent)",
+        card: "rgb(var(--card-rgb) / <alpha-value>)",
         success: "rgb(var(--success-rgb) / <alpha-value>)",
         warning: "rgb(var(--warning-rgb) / <alpha-value>)",
         error: "rgb(var(--error-rgb) / <alpha-value>)",
@@ -50,6 +51,16 @@ const config: Config = {
           "Consolas",
           "monospace",
         ],
+      },
+      borderRadius: {
+        /* 原型刻度：输入框与小控件 8 / 面板 10 / 弹窗 14 */
+        btn: "8px",
+        panel: "10px",
+        modal: "14px",
+      },
+      boxShadow: {
+        panel: "0 1px 2px rgb(15 23 42 / 0.04)",
+        raised: "0 10px 30px -12px rgb(15 23 42 / 0.18)",
       },
       maxWidth: {
         content: "720px",

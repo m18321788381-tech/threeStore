@@ -1,66 +1,47 @@
 import Link from "next/link";
-import { siteConfig } from "@/lib/site";
+import { brandParts, siteConfig } from "@/lib/site";
 
+/** 页脚：对齐设计稿 V-01 .footer —— 单行紧凑，不占据阅读视线。 */
 export function Footer() {
+  const brand = brandParts();
+  const links = [
+    { href: "/feed.xml", label: "RSS" },
+    { href: "/sitemap.xml", label: "Sitemap" },
+    ...siteConfig.social,
+    { href: "/admin", label: "后台管理" },
+  ];
+
   return (
     <footer className="border-t border-border">
-      <div className="container-page grid gap-8 py-12 md:grid-cols-[1.4fr_1fr_1fr]">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent">
-              {siteConfig.title.slice(0, 1)}
-            </span>
-            <span className="font-semibold">{siteConfig.title}</span>
-          </div>
-          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-            {siteConfig.description}
-          </p>
+      <div className="container-page flex flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <Link href="/" className="font-bold tracking-tight">
+            {brand.prefix}
+            {brand.suffix && <span className="text-accent">{brand.suffix}</span>}
+          </Link>
+          <span className="text-muted" aria-hidden>
+            ·
+          </span>
+          <span className="text-muted">写作、阅读与知识网络</span>
         </div>
 
-        <div>
-          <h3 className="text-sm font-semibold">导航</h3>
-          <ul className="mt-3 space-y-2 text-sm text-muted">
-            {siteConfig.nav.map((item) => (
-              <li key={item.href}>
-                <Link href={item.href} className="hover:text-accent">
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h3 className="text-sm font-semibold">订阅与联系</h3>
-          <ul className="mt-3 space-y-2 text-sm text-muted">
-            <li>
-              <a href="/feed.xml" className="hover:text-accent">
-                RSS 订阅
-              </a>
-            </li>
-            {siteConfig.social.map((item) => (
-              <li key={item.href}>
-                <a
-                  href={item.href}
-                  target={item.href.startsWith("http") ? "_blank" : undefined}
-                  rel="noreferrer"
-                  className="hover:text-accent"
-                >
-                  {item.label}
-                </a>
-              </li>
-            ))}
-            <li>
-              <Link href="/admin" className="hover:text-accent">
-                后台管理
-              </Link>
-            </li>
-          </ul>
-        </div>
+        <nav aria-label="页脚链接" className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+          {links.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              target={item.href.startsWith("http") ? "_blank" : undefined}
+              rel={item.href.startsWith("http") ? "noreferrer" : undefined}
+              className="text-muted transition-colors hover:text-accent"
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
       </div>
 
-      <div className="border-t border-border py-6">
-        <div className="container-page flex flex-col gap-2 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-t border-border py-5">
+        <div className="container-page flex flex-col gap-1.5 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <span>
             © {new Date().getFullYear()} {siteConfig.author} · 用 Next.js 与 FastAPI 搭建
           </span>

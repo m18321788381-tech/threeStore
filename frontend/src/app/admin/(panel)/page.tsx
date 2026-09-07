@@ -3,18 +3,18 @@ import { Dashboard } from "./Dashboard";
 
 export default function AdminHome() {
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <>
+      <header className="panel-head">
         <div>
-          <h1 className="page-title text-2xl">仪表盘</h1>
-          <p className="mt-1 text-sm text-muted">站点内容概览与快捷入口。</p>
+          <h1 className="panel-title">仪表盘</h1>
+          <p className="mt-1 text-meta text-muted">站点内容概览与快捷入口。</p>
         </div>
-        <Link href="/admin/posts/new" className="btn-primary">
+        <Link href="/admin/posts/new" className="btn-primary btn-sm">
           写新文章
         </Link>
       </header>
 
       <Dashboard />
-    </div>
+    </>
   );
 }

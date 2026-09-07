@@ -25,7 +25,7 @@ export function Chip({
 
   const styles = cn(
     "chip",
-    active && "border-accent bg-accent-soft text-accent",
+    active && "chip-active",
     className
   );
 

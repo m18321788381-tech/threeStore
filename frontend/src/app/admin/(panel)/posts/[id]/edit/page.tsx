@@ -1,18 +1,18 @@
 import { PostEditor } from "@/components/editor/PostEditor";
 
-export default async function EditPostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="page-title text-2xl">编辑文章</h1>
-        <p className="mt-1 font-mono text-xs text-muted">{id}</p>
+    <>
+      <header className="panel-head">
+        <div>
+          <h1 className="panel-title">编辑文章</h1>
+          <p className="mt-1 font-mono text-meta text-muted">{id}</p>
+        </div>
       </header>
+
       <PostEditor postId={id} />
-    </div>
+    </>
   );
 }

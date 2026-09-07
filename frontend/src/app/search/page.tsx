@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { SearchResults } from "./SearchResults";
 import { Suspense } from "react";
+import { SearchBox, SearchResults } from "./SearchResults";
 import { PostListSkeleton } from "@/components/common/Skeleton";
 
 export const metadata: Metadata = {
@@ -20,8 +20,10 @@ export default async function SearchPage({
     <div className="mx-auto max-w-content">
       <header className="page-head">
         <h1 className="page-title">搜索</h1>
-        <p className="page-desc">搜索标题、摘要与正文。</p>
+        <p className="page-desc">在标题、摘要与正文中全文检索。</p>
       </header>
+
+      <SearchBox defaultQuery={q} />
 
       <Suspense key={`${q}-${currentPage}`} fallback={<PostListSkeleton count={2} />}>
         <SearchResults q={q} page={currentPage} />

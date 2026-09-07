@@ -6,14 +6,27 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Skeleton } from "@/components/common/Skeleton";
-import { formatDate } from "@/lib/utils";
+import { TablePager } from "@/components/common/TablePager";
+import { cn, formatDate } from "@/lib/utils";
 import type { Paginated, PostListItem } from "@/types";
 
 const STATUS_LABEL: Record<number, string> = { 0: "草稿", 1: "已发布", 2: "归档" };
+const STATUS_BADGE: Record<number, string> = {
+  0: "badge-warning",
+  1: "badge-success",
+  2: "badge-muted",
+};
 
-export function PostsTable() {
+const FILTERS: Array<{ label: string; value: number | undefined }> = [
+  { label: "全部", value: undefined },
+  { label: "已发布", value: 1 },
+  { label: "草稿", value: 0 },
+  { label: "归档", value: 2 },
+];
+
+export function PostsTable({ initialStatus }: { initialStatus?: number }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<number | undefined>(undefined);
+  const [status, setStatus] = useState<number | undefined>(initialStatus);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -28,90 +41,81 @@ export function PostsTable() {
   });
 
   const toggle = useMutation({
-    mutationFn: ({ id, next }: { id: string; next: number }) =>
-      api.publishPost(id, next),
+    mutationFn: ({ id, next }: { id: string; next: number }) => api.publishPost(id, next),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-posts"] }),
   });
 
-  const result = (data || { items: [], pages: 0, total: 0 }) as Paginated<PostListItem>;
+  const result = (data || { items: [], pages: 0, total: 0, page: 1, page_size: 15 }) as Paginated<
+    PostListItem
+  >;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { label: "全部", value: undefined },
-          { label: "已发布", value: 1 },
-          { label: "草稿", value: 0 },
-          { label: "归档", value: 2 },
-        ].map((item) => (
+    <div className="space-y-5">
+      <div className="toolbar">
+        {FILTERS.map((item) => (
           <button
             key={item.label}
             type="button"
+            aria-pressed={status === item.value}
             onClick={() => {
               setStatus(item.value);
               setPage(1);
             }}
-            className={`chip ${status === item.value ? "border-accent bg-accent-soft text-accent" : ""}`}
+            className={cn("chip cursor-pointer", status === item.value && "chip-active")}
           >
             {item.label}
           </button>
         ))}
-        <span className="ml-auto text-xs text-muted">共 {result.total} 篇</span>
+        <span className="ml-auto text-meta tabular-nums text-muted">共 {result.total} 篇</span>
       </div>
 
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-14" />
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-14" />
           ))}
         </div>
       ) : result.items.length === 0 ? (
         <EmptyState title="没有符合条件的文章" />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-surface/70 text-left text-xs text-muted">
+        <div className="card overflow-x-auto">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-4 py-3 font-medium">标题</th>
-                <th className="px-4 py-3 font-medium">分类</th>
-                <th className="px-4 py-3 font-medium">状态</th>
-                <th className="px-4 py-3 font-medium">阅读</th>
-                <th className="px-4 py-3 font-medium">更新</th>
-                <th className="px-4 py-3 text-right font-medium">操作</th>
+                <th>标题</th>
+                <th className="w-28">分类</th>
+                <th className="w-20">状态</th>
+                <th className="w-16 text-right">阅读</th>
+                <th className="w-24">更新</th>
+                <th className="w-44 text-right">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {result.items.map((post) => (
-                <tr key={post.id} className="hover:bg-surface/50">
-                  <td className="max-w-[280px] px-4 py-3">
+                <tr key={post.id} className="transition-colors hover:bg-surface">
+                  <td className="max-w-[320px]">
                     <Link
                       href={`/admin/posts/${post.id}/edit`}
-                      className="line-clamp-1 font-medium hover:text-accent"
+                      className="line-clamp-1 font-medium transition-colors hover:text-accent"
                     >
                       {post.title}
                     </Link>
-                    <span className="mt-0.5 block font-mono text-[11px] text-muted">
+                    <span className="mt-0.5 block truncate font-mono text-[11px] text-muted">
                       /{post.slug}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted">{post.category?.name || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`${
-                        post.status === 1
-                          ? "badge badge-success"
-                          : "badge badge-accent"
-                      }`}
-                    >
+                  <td className="text-muted">{post.category?.name || "—"}</td>
+                  <td>
+                    <span className={STATUS_BADGE[post.status] ?? "badge-muted"}>
                       {STATUS_LABEL[post.status] ?? "未知"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted">{post.view_count}</td>
-                  <td className="px-4 py-3 text-muted">
+                  <td className="text-right tabular-nums text-muted">{post.view_count}</td>
+                  <td className="whitespace-nowrap text-meta text-muted">
                     {formatDate(post.updated_at || post.published_at)}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2 text-xs">
+                  <td>
+                    <div className="flex items-center justify-end gap-1.5 text-xs">
                       <button
                         type="button"
                         disabled={toggle.isPending}
@@ -120,12 +124,9 @@ export function PostsTable() {
                         }
                         className="row-action"
                       >
-                        {post.status === 1 ? "转为草稿" : "发布"}
+                        {post.status === 1 ? "转草稿" : "发布"}
                       </button>
-                      <Link
-                        href={`/admin/posts/${post.id}/edit`}
-                        className="row-action"
-                      >
+                      <Link href={`/admin/posts/${post.id}/edit`} className="row-action">
                         编辑
                       </Link>
                       <button
@@ -149,29 +150,7 @@ export function PostsTable() {
         </div>
       )}
 
-      {result.pages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="chip disabled:opacity-50"
-          >
-            上一页
-          </button>
-          <span className="text-sm text-muted">
-            {page} / {result.pages}
-          </span>
-          <button
-            type="button"
-            disabled={page >= result.pages}
-            onClick={() => setPage((p) => p + 1)}
-            className="chip disabled:opacity-50"
-          >
-            下一页
-          </button>
-        </div>
-      )}
+      <TablePager page={result.page} pages={result.pages} onChange={setPage} />
     </div>
   );
 }

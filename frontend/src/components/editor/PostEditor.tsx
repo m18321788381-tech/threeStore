@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { Skeleton } from "@/components/common/Skeleton";
+import { cn } from "@/lib/utils";
 import type { Category, PostDetail, Tag } from "@/types";
 
 export function PostEditor({ postId }: { postId?: string }) {
@@ -108,6 +109,7 @@ export function PostEditor({ postId }: { postId?: string }) {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          aria-label="文章标题"
           placeholder="文章标题"
           className="input min-w-[240px] flex-1 text-lg font-semibold"
         />
@@ -132,17 +134,17 @@ export function PostEditor({ postId }: { postId?: string }) {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-error/40 bg-error/5 px-3 py-2 text-sm text-error">
+        <p className="rounded-btn border border-error/40 bg-error/5 px-3 py-2 text-sm text-error">
           {error}
         </p>
       )}
       {saved && (
-        <p className="rounded-lg border border-success/40 bg-success/5 px-3 py-2 text-sm text-success">
+        <p className="rounded-btn border border-success/40 bg-success/5 px-3 py-2 text-sm text-success">
           {saved}
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm">
           <span className="field-label text-muted">Slug（留空自动生成）</span>
           <input
@@ -204,14 +206,14 @@ export function PostEditor({ postId }: { postId?: string }) {
                     prev.includes(t.id) ? prev.filter((x) => x !== t.id) : [...prev, t.id]
                   )
                 }
-                className={`chip ${active ? "border-accent bg-accent-soft text-accent" : ""}`}
+                className={cn("chip cursor-pointer", active && "chip-active")}
               >
                 #{t.name}
               </button>
             );
           })}
           {(tags || []).length === 0 && (
-            <span className="text-xs text-muted">还没有标签，去「标签」页创建。</span>
+            <span className="text-meta text-muted">还没有标签，去「标签」页创建。</span>
           )}
         </div>
       </div>
@@ -223,7 +225,7 @@ export function PostEditor({ postId }: { postId?: string }) {
         onUpload={upload}
       />
 
-      <p className="text-xs text-muted">
+      <p className="text-meta text-muted">
         提示：正文里写 <code className="font-mono text-accent">[[另一篇文章的标题]]</code>{" "}
         即可建立双向链接，保存后会自动出现在数字花园与被引用文章的反向链接里。
       </p>

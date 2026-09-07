@@ -1,19 +1,28 @@
+import Link from "next/link";
 import { PostsTable } from "./PostsTable";
 
-export default function AdminPostsPage() {
+export default async function AdminPostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const parsed = status === undefined ? Number.NaN : Number(status);
+  const initialStatus = Number.isFinite(parsed) ? parsed : undefined;
+
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <>
+      <header className="panel-head">
         <div>
-          <h1 className="page-title text-2xl">文章</h1>
-          <p className="mt-1 text-sm text-muted">草稿与已发布都在这里。</p>
+          <h1 className="panel-title">文章</h1>
+          <p className="mt-1 text-meta text-muted">草稿、已发布与归档都在这里。</p>
         </div>
-        <a href="/admin/posts/new" className="btn-primary">
+        <Link href="/admin/posts/new" className="btn-primary btn-sm">
           写新文章
-        </a>
+        </Link>
       </header>
 
-      <PostsTable />
-    </div>
+      <PostsTable initialStatus={initialStatus} />
+    </>
   );
 }

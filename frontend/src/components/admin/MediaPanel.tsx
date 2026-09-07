@@ -41,7 +41,7 @@ export function MediaPanel() {
 
   return (
     <div className="space-y-5">
-      <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-border px-6 py-10 text-center transition-colors hover:border-accent">
+      <label className="flex cursor-pointer items-center justify-center rounded-panel border border-dashed border-border px-6 py-10 text-center transition-colors hover:border-accent">
         <span>
           <span className="block text-sm font-medium">点击上传图片</span>
           <span className="mt-1 block text-xs text-muted">
@@ -68,7 +68,7 @@ export function MediaPanel() {
       {error && <p className="text-sm text-error">{error}</p>}
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
@@ -76,7 +76,7 @@ export function MediaPanel() {
       ) : result.items.length === 0 ? (
         <EmptyState title="还没有上传任何图片" />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {result.items.map((item) => (
             <div key={item.id} className="card overflow-hidden">
               {/* 媒体由 Nginx / Next 反代同源提供，直接用 img 即可 */}

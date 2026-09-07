@@ -52,46 +52,52 @@ function CommentForm({
         }
         mutation.mutate();
       }}
-      className={cn("rounded-xl border border-border p-4", compact && "bg-surface/50")}
+      className={cn(compact ? "rounded-panel border border-border bg-card p-3" : "comment-form")}
     >
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="昵称（选填）"
-          maxLength={50}
-          className="input"
-        />
-        <input
-          value={site}
-          onChange={(e) => setSite(e.target.value)}
-          placeholder="个人站点（选填）"
-          maxLength={255}
-          className="input"
-        />
-      </div>
+      {!compact && (
+        <div className="mb-2.5 grid gap-2 sm:grid-cols-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="昵称（选填）"
+            maxLength={50}
+            className="input"
+          />
+          <input
+            value={site}
+            onChange={(e) => setSite(e.target.value)}
+            placeholder="个人站点（选填）"
+            maxLength={255}
+            className="input"
+          />
+        </div>
+      )}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder="说点什么…（支持纯文本，提交后需博主审核）"
+        placeholder={compact ? "回复这位读者…" : "说点什么…（支持纯文本，提交后需博主审核）"}
         rows={compact ? 3 : 4}
         maxLength={2000}
-        className="input mt-2 resize-y"
+        className="input resize-y"
       />
-      <div className="mt-3 flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="btn-primary btn-sm"
-        >
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={mutation.isPending} className="btn-primary btn-sm">
           {mutation.isPending ? "提交中…" : parentId ? "回复" : "发表评论"}
         </button>
         {onDone && (
-          <button type="button" onClick={onDone} className="text-sm text-muted hover:text-foreground">
+          <button
+            type="button"
+            onClick={onDone}
+            className="text-sm text-muted transition-colors hover:text-foreground"
+          >
             取消
           </button>
         )}
-        {error && <span className="text-sm text-error">{error}</span>}
+        {error && (
+          <span role="alert" className="text-sm text-error">
+            {error}
+          </span>
+        )}
       </div>
     </form>
   );
@@ -107,73 +113,52 @@ function CommentItem({
   depth?: number;
 }) {
   const [replying, setReplying] = useState(false);
+  const pending = comment.status === 0;
 
   return (
-    <li className="mt-5 first:mt-0">
-      <div className="flex gap-3">
-        <span
-          className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-medium",
-            comment.is_author ? "badge badge-accent" : "border border-border text-muted"
-          )}
-        >
-          {initials(comment.author_name)}
-        </span>
+    <li className={cn("comment-row", pending && "comment-pending")}>
+      <span className={cn("avatar", !comment.is_author && "avatar-muted")}>
+        {initials(comment.author_name)}
+      </span>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="font-medium">{comment.author_name}</span>
-            {comment.is_author && (
-              <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[11px] text-accent">
-                作者
-              </span>
-            )}
-            {comment.is_pinned && (
-              <span className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted">
-                置顶
-              </span>
-            )}
-            <span className="text-xs text-muted">
-              {formatDateTime(comment.created_at)}
-            </span>
-          </div>
-
-          <p className="mt-1.5 whitespace-pre-wrap break-words text-body">
-            {comment.content}
-          </p>
-
-          <button
-            type="button"
-            onClick={() => setReplying((v) => !v)}
-            className="mt-2 text-xs text-muted hover:text-accent"
-          >
-            {replying ? "收起" : "回复"}
-          </button>
-
-          {replying && (
-            <div className="mt-3">
-              <CommentForm
-                slug={slug}
-                parentId={comment.id}
-                compact
-                onDone={() => setReplying(false)}
-              />
-            </div>
-          )}
-
-          {comment.replies.length > 0 && (
-            <ul className="mt-4 border-l border-border pl-4">
-              {comment.replies.map((child) => (
-                <CommentItem
-                  key={child.id}
-                  comment={child}
-                  slug={slug}
-                  depth={depth + 1}
-                />
-              ))}
-            </ul>
-          )}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2 text-meta">
+          <span className="font-medium">{comment.author_name}</span>
+          {comment.is_author && <span className="author-badge">作者</span>}
+          {comment.is_pinned && <span className="badge badge-muted">置顶</span>}
+          {pending && <span className="badge badge-warning">待审核</span>}
+          <time className="text-xs text-muted">{formatDateTime(comment.created_at)}</time>
         </div>
+
+        <p className="mt-1 whitespace-pre-wrap break-words text-[14.5px] leading-relaxed">
+          {comment.content}
+        </p>
+
+        {depth < 3 && (
+          <div className="mt-1.5 flex gap-3.5 text-[12.5px] text-muted">
+            <button
+              type="button"
+              onClick={() => setReplying((v) => !v)}
+              className="transition-colors hover:text-accent"
+            >
+              {replying ? "收起" : "回复"}
+            </button>
+          </div>
+        )}
+
+        {replying && (
+          <div className="mt-3">
+            <CommentForm slug={slug} parentId={comment.id} compact onDone={() => setReplying(false)} />
+          </div>
+        )}
+
+        {comment.replies.length > 0 && (
+          <ul className="ml-[52px] mt-2">
+            {comment.replies.map((child) => (
+              <CommentItem key={child.id} comment={child} slug={slug} depth={depth + 1} />
+            ))}
+          </ul>
+        )}
       </div>
     </li>
   );
@@ -190,21 +175,15 @@ export function CommentSection({ slug }: { slug: string }) {
   const result = (data || { items: [], total: 0, pages: 0 }) as Paginated<CommentNode>;
 
   return (
-    <section id="comments" className="mt-16 border-t border-border pt-10">
-      <h2 className="text-lg font-semibold">
-        评论
-        {result.total > 0 && (
-          <span className="ml-2 text-sm font-normal text-muted">
-            共 {result.total} 条
-          </span>
-        )}
-      </h2>
+    <section id="comments" className="mt-14 border-t-2 border-foreground pt-7">
+      <h2 className="text-[19px] font-bold tracking-tight">评论</h2>
+      <p className="mb-6 mt-1 text-meta text-muted">
+        {result.total > 0 ? `共 ${result.total} 条 · ` : ""}发言前请先阅读社区约定，提交后需博主审核。
+      </p>
 
-      <div className="mt-5">
-        <CommentForm slug={slug} />
-      </div>
+      <CommentForm slug={slug} />
 
-      <div className="mt-8">
+      <div className="mt-7">
         {isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -212,7 +191,7 @@ export function CommentSection({ slug }: { slug: string }) {
             ))}
           </div>
         ) : result.items.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-sm text-muted">
+          <p className="rounded-panel border border-dashed border-border px-6 py-10 text-center text-sm text-muted">
             还没有评论，来说第一句吧。
           </p>
         ) : (
@@ -225,23 +204,23 @@ export function CommentSection({ slug }: { slug: string }) {
       </div>
 
       {result.pages > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-2">
+        <div className="mt-7 flex items-center justify-center gap-3">
           <button
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="chip disabled:opacity-50"
+            className="btn-ghost btn-sm"
           >
             上一页
           </button>
-          <span className="text-sm text-muted">
+          <span className="text-sm text-muted tabular-nums">
             {page} / {result.pages}
           </span>
           <button
             type="button"
             disabled={page >= result.pages}
             onClick={() => setPage((p) => p + 1)}
-            className="chip disabled:opacity-50"
+            className="btn-ghost btn-sm"
           >
             下一页
           </button>

@@ -3,11 +3,10 @@ import { Suspense } from "react";
 import { serverGet } from "@/lib/api";
 import { siteConfig } from "@/lib/site";
 import { PostCard } from "@/components/post/PostCard";
-import { Chip } from "@/components/common/Chip";
 import { Pagination } from "@/components/common/Pagination";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PostListSkeleton } from "@/components/common/Skeleton";
-import type { Paginated, PostListItem, Category, Tag } from "@/types";
+import type { Paginated, PostListItem, Category, Tag, ArchiveGroup } from "@/types";
 
 export const revalidate = 60; // ISR：首页列表最多落后 60 秒
 
@@ -32,7 +31,7 @@ async function PostList({ page }: { page: number }) {
 
   return (
     <>
-      <div className="grid gap-4">
+      <div>
         {data.items.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
@@ -42,53 +41,91 @@ async function PostList({ page }: { page: number }) {
   );
 }
 
+/** 侧栏对齐设计稿 V-01：关于我 / 分类 / 标签云 / 归档，滚动时吸附。 */
 async function Sidebar() {
-  const [categories, tags] = await Promise.all([
+  const [categories, tags, archive] = await Promise.all([
     serverGet<Category[]>("/categories"),
     serverGet<Tag[]>("/tags"),
+    serverGet<{ groups: ArchiveGroup[] }>("/posts/archive"),
   ]);
 
+  const years = new Map<string, number>();
+  for (const group of archive?.groups || []) {
+    years.set(group.year, (years.get(group.year) || 0) + group.items.length);
+  }
+  const yearRows = [...years.entries()]
+    .sort((a, b) => Number(b[0]) - Number(a[0]))
+    .slice(0, 5);
+
   return (
-    <aside className="space-y-8">
-      <section>
-        <h2 className="side-title">分类</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(categories || []).length ? (
-            (categories || []).map((cat) => (
-              <Chip key={cat.slug} href={`/categories/${cat.slug}`} count={cat.post_count}>
-                {cat.name}
-              </Chip>
-            ))
-          ) : (
-            <p className="text-sm text-muted">暂无分类</p>
-          )}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="side-title">标签云</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(tags || []).length ? (
-            (tags || []).map((tag) => (
-              <Chip key={tag.slug} href={`/tags/${tag.slug}`} count={tag.post_count}>
-                #{tag.name}
-              </Chip>
-            ))
-          ) : (
-            <p className="text-sm text-muted">暂无标签</p>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border p-4">
-        <h2 className="side-title">订阅</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          更新不频繁，但每篇都认真写。可以用 RSS 订阅。
+    <aside className="space-y-5 lg:sticky lg:top-[84px]">
+      <section className="widget">
+        <h2 className="widget-title">关于我</h2>
+        <p className="mt-3 text-body leading-relaxed text-muted">
+          {siteConfig.bio}
+          <Link
+            href="/feed.xml"
+            className="ml-1 whitespace-nowrap font-medium text-accent hover:underline"
+          >
+            RSS 订阅 →
+          </Link>
         </p>
-        <a href="/feed.xml" className="btn-ghost btn-sm mt-3 w-full">
-          RSS Feed
-        </a>
       </section>
+
+      <section className="widget">
+        <h2 className="widget-title">分类</h2>
+        {(categories || []).length ? (
+          <ul className="mt-3 space-y-1.5">
+            {categories!.map((cat) => (
+              <li key={cat.slug}>
+                <Link
+                  href={`/categories/${cat.slug}`}
+                  className="flex items-baseline justify-between gap-3 text-sm text-muted transition-colors hover:text-accent"
+                >
+                  <span className="truncate">{cat.name}</span>
+                  <span className="shrink-0 tabular-nums">{cat.post_count}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-muted">暂无分类</p>
+        )}
+      </section>
+
+      <section className="widget">
+        <h2 className="widget-title">标签云</h2>
+        {(tags || []).length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tags!.slice(0, 18).map((tag) => (
+              <Link key={tag.slug} href={`/tags/${tag.slug}`} className="chip-sm">
+                #{tag.name}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted">暂无标签</p>
+        )}
+      </section>
+
+      {yearRows.length > 0 && (
+        <section className="widget">
+          <h2 className="widget-title">归档</h2>
+          <ul className="mt-3 space-y-1.5">
+            {yearRows.map(([year, count]) => (
+              <li key={year}>
+                <Link
+                  href="/archive"
+                  className="flex items-baseline justify-between gap-3 text-sm text-muted transition-colors hover:text-accent"
+                >
+                  <span className="font-mono tabular-nums">{year}</span>
+                  <span className="tabular-nums">{count} 篇</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </aside>
   );
 }
@@ -102,43 +139,17 @@ export default async function HomePage({
   const currentPage = Math.max(1, Number(page) || 1);
 
   return (
-    <div className="space-y-14">
-      {/* Hero */}
-      <section className="rounded-2xl border border-border bg-surface/60 px-6 py-11 sm:px-9 sm:py-14">
-        <p className="text-sm text-accent">{siteConfig.author}</p>
-        <h1 className="page-title mt-3 sm:text-4xl">
-          {siteConfig.title}
-        </h1>
-        <p className="mt-4 max-w-2xl text-lead text-muted">
-          {siteConfig.description}
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/archive" className="btn-primary">
-            浏览归档
-          </Link>
-          <Link href="/garden" className="btn-ghost">
-            进入数字花园
-          </Link>
-        </div>
+    <div className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <section className="min-w-0 max-w-content">
+        <h1 className="sr-only">最新文章</h1>
+        <Suspense fallback={<PostListSkeleton />}>
+          <PostList page={currentPage} />
+        </Suspense>
       </section>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section>
-          <div className="mb-5 flex items-baseline justify-between">
-            <h2 className="section-title">最新文章</h2>
-            <Link href="/archive" className="text-sm text-muted hover:text-accent">
-              全部 →
-            </Link>
-          </div>
-          <Suspense fallback={<PostListSkeleton />}>
-            <PostList page={currentPage} />
-          </Suspense>
-        </section>
-
-        <Suspense fallback={<div className="skeleton h-64" />}>
-          <Sidebar />
-        </Suspense>
-      </div>
+      <Suspense fallback={<div className="skeleton h-64" />}>
+        <Sidebar />
+      </Suspense>
     </div>
   );
 }
