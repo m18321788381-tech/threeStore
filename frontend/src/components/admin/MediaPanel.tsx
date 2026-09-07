@@ -65,7 +65,7 @@ export function MediaPanel() {
         />
       </label>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-error">{error}</p>}
 
       {isLoading ? (
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -99,7 +99,7 @@ export function MediaPanel() {
                       setCopied(item.id);
                       setTimeout(() => setCopied(""), 1500);
                     }}
-                    className="rounded border border-border px-2 py-1 text-[11px] text-muted hover:border-accent hover:text-accent"
+                    className="row-action text-[11px]"
                   >
                     {copied === item.id ? "已复制" : "复制链接"}
                   </button>
@@ -108,7 +108,7 @@ export function MediaPanel() {
                     onClick={() => {
                       if (window.confirm("删除这张图片？")) remove.mutate(item.id);
                     }}
-                    className="rounded border border-border px-2 py-1 text-[11px] text-red-500 hover:border-red-500"
+                    className="row-action-danger text-[11px]"
                   >
                     删除
                   </button>

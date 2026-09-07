@@ -15,9 +15,9 @@ export default async function ArchivePage() {
 
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-10">
-        <h1 className="text-3xl font-bold">归档</h1>
-        <p className="mt-2 text-sm text-muted">
+      <header className="page-head">
+        <h1 className="page-title">归档</h1>
+        <p className="page-desc">
           共 {data?.total ?? 0} 篇文章，按发布时间倒序排列。
         </p>
       </header>
@@ -29,7 +29,7 @@ export default async function ArchivePage() {
           {groups.map((group) => (
             <section key={group.key}>
               <div className="mb-4 flex items-baseline gap-3">
-                <h2 className="text-xl font-semibold">
+                <h2 className="section-title">
                   {group.year} 年 {Number(group.month)} 月
                 </h2>
                 <span className="text-xs text-muted">{group.items.length} 篇</span>
@@ -45,7 +45,7 @@ export default async function ArchivePage() {
                       </time>
                       <Link
                         href={`/posts/${item.slug}`}
-                        className="text-[15px] font-medium hover:text-accent"
+                        className="text-body font-medium hover:text-accent"
                       >
                         {item.title}
                       </Link>

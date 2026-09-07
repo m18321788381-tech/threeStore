@@ -55,27 +55,27 @@ export function TaxonomyPanel({ kind }: { kind: "categories" | "tags" }) {
         className="flex flex-wrap items-end gap-3 rounded-xl border border-border p-4"
       >
         <label className="text-sm">
-          <span className="mb-1.5 block text-muted">名称</span>
+          <span className="field-label text-muted">名称</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={isCat ? "例如：后端工程" : "例如：Python"}
-            className="w-48 rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            className="input w-48"
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1.5 block text-muted">Slug（可选）</span>
+          <span className="field-label text-muted">Slug（可选）</span>
           <input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="留空自动生成"
-            className="w-48 rounded-lg border border-border bg-transparent px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+            className="input w-48 font-mono"
           />
         </label>
         <button type="submit" disabled={create.isPending} className="btn-primary">
           {create.isPending ? "创建中…" : "新建"}
         </button>
-        {error && <span className="text-sm text-red-500">{error}</span>}
+        {error && <span className="text-sm text-error">{error}</span>}
       </form>
 
       {isLoading ? (
@@ -101,7 +101,7 @@ export function TaxonomyPanel({ kind }: { kind: "categories" | "tags" }) {
                 onClick={() => {
                   if (window.confirm(`删除「${item.name}」？`)) remove.mutate(item.id);
                 }}
-                className="ml-auto rounded border border-border px-2 py-1 text-xs text-red-500 hover:border-red-500"
+                className="row-action-danger ml-auto"
               >
                 删除
               </button>

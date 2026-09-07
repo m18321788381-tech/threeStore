@@ -143,7 +143,7 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
             onChange={(e) => onChange(e.target.value)}
             spellCheck={false}
             placeholder="# 从这里开始写…&#10;&#10;支持 GFM 表格、任务列表、删除线；用 [[文章标题]] 建立双向链接。"
-            className="h-[620px] w-full resize-none border-0 bg-transparent p-5 font-mono text-[13px] leading-relaxed outline-none md:border-r md:border-border"
+            className="h-[620px] w-full resize-none border-0 bg-transparent p-5 font-mono text-[13px] leading-relaxed md:border-r md:border-border"
           />
         )}
 
@@ -174,7 +174,7 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
             <span>
               双向链接 {wikiTargets.length} 处
               {unresolved.length > 0 && (
-                <span className="ml-1 text-amber-500">
+                <span className="ml-1 text-warning">
                   （{unresolved.length} 处目标不存在）
                 </span>
               )}

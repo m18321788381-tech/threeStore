@@ -295,7 +295,7 @@ export function TerminalEgg() {
                   line.kind === "input"
                     ? "opacity-90"
                     : line.kind === "error"
-                      ? "text-red-400"
+                      ? "text-error"
                       : "opacity-80"
                 }
               >

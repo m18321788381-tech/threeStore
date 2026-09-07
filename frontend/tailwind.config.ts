@@ -16,11 +16,23 @@ const config: Config = {
         foreground: "rgb(var(--fg-rgb) / <alpha-value>)",
         muted: "rgb(var(--fg-muted-rgb) / <alpha-value>)",
         border: "rgb(var(--border-rgb) / <alpha-value>)",
+        "border-strong": "rgb(var(--border-strong-rgb) / <alpha-value>)",
         accent: {
           DEFAULT: "rgb(var(--accent-rgb) / <alpha-value>)",
           soft: "var(--accent-soft)",
         },
         code: "rgb(var(--code-bg-rgb) / <alpha-value>)",
+        "on-accent": "var(--on-accent)",
+        success: "rgb(var(--success-rgb) / <alpha-value>)",
+        warning: "rgb(var(--warning-rgb) / <alpha-value>)",
+        error: "rgb(var(--error-rgb) / <alpha-value>)",
+        info: "rgb(var(--info-rgb) / <alpha-value>)",
+      },
+      fontSize: {
+        /* 统一的排版尺度：正文 / 次要信息 / 导语 */
+        body: ["0.9375rem", { lineHeight: "1.7" }],
+        meta: ["0.8125rem", { lineHeight: "1.5" }],
+        lead: ["1.0625rem", { lineHeight: "1.7" }],
       },
       fontFamily: {
         sans: [

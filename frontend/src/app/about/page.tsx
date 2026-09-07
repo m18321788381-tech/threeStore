@@ -37,21 +37,21 @@ const features = [
 export default function AboutPage() {
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-12">
+      <header className="page-head">
         <div className="flex items-center gap-4">
-          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-xl font-bold text-white">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-xl font-bold text-on-accent">
             {siteConfig.author.slice(0, 1)}
           </span>
           <div>
-            <h1 className="text-3xl font-bold">关于</h1>
-            <p className="mt-1 text-sm text-muted">{siteConfig.author}</p>
+            <h1 className="page-title">关于</h1>
+            <p className="page-desc">{siteConfig.author}</p>
           </div>
         </div>
-        <p className="mt-6 text-[17px] leading-relaxed text-muted">{siteConfig.bio}</p>
+        <p className="mt-6 text-lead text-muted">{siteConfig.bio}</p>
       </header>
 
       <section className="mb-14">
-        <h2 className="text-xl font-semibold">这个站点</h2>
+        <h2 className="section-title">这个站点</h2>
         <div className="prose-blog mt-4">
           <p>
             这是一个单作者的内容站点。没有点赞、没有推荐算法、没有信息流 ——
@@ -65,11 +65,11 @@ export default function AboutPage() {
       </section>
 
       <section className="mb-14">
-        <h2 className="text-xl font-semibold">实现要点</h2>
+        <h2 className="section-title">实现要点</h2>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {features.map((item) => (
             <div key={item.title} className="card p-5">
-              <h3 className="text-[15px] font-semibold">{item.title}</h3>
+              <h3 className="text-body font-semibold">{item.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{item.body}</p>
             </div>
           ))}
@@ -77,19 +77,19 @@ export default function AboutPage() {
       </section>
 
       <section className="mb-14">
-        <h2 className="text-xl font-semibold">技术栈</h2>
+        <h2 className="section-title">技术栈</h2>
         <dl className="mt-5 divide-y divide-border border-y border-border">
           {stack.map((row) => (
             <div key={row.label} className="grid gap-1 py-3 sm:grid-cols-[120px_1fr] sm:gap-4">
               <dt className="text-sm font-medium text-muted">{row.label}</dt>
-              <dd className="font-mono text-[13px] leading-relaxed">{row.value}</dd>
+              <dd className="font-mono text-meta">{row.value}</dd>
             </div>
           ))}
         </dl>
       </section>
 
       <section>
-        <h2 className="text-xl font-semibold">联系与订阅</h2>
+        <h2 className="section-title">联系与订阅</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           <a href="/feed.xml" className="btn-primary">
             RSS 订阅

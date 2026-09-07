@@ -4,7 +4,7 @@ import { formatDate, readingTimeLabel } from "@/lib/utils";
 
 export function PostCard({ post, dense = false }: { post: PostListItem; dense?: boolean }) {
   return (
-    <article className="card group p-5 hover:border-accent/60">
+    <article className="card card-hover group p-5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
         <time dateTime={post.published_at || undefined}>
           {formatDate(post.published_at)}
@@ -20,7 +20,7 @@ export function PostCard({ post, dense = false }: { post: PostListItem; dense?: 
           </>
         )}
         {post.status === 0 && (
-          <span className="rounded bg-accent-soft px-1.5 py-0.5 text-accent">草稿</span>
+          <span className="badge badge-accent">草稿</span>
         )}
       </div>
 
@@ -41,7 +41,7 @@ export function PostCard({ post, dense = false }: { post: PostListItem; dense?: 
           <Link
             key={tag.slug}
             href={`/tags/${tag.slug}`}
-            className="chip !py-0.5 !text-[11px]"
+            className="chip-sm"
           >
             #{tag.name}
           </Link>

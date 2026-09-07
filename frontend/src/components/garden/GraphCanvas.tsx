@@ -124,6 +124,7 @@ export function GraphCanvas({ data }: { data: GraphData }) {
       const fg = styles.getPropertyValue("--fg").trim() || "#1e293b";
       const border = styles.getPropertyValue("--border").trim() || "#e2e8f0";
       const accent = styles.getPropertyValue("--accent").trim() || "#2563eb";
+      const bg = styles.getPropertyValue("--bg").trim() || "#ffffff";
 
       ctx.save();
       ctx.clearRect(0, 0, width, height);
@@ -151,12 +152,13 @@ export function GraphCanvas({ data }: { data: GraphData }) {
         const r = 7 + Math.min(6, n.degree * 1.6);
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = n === hovered ? accent : accent;
-        ctx.globalAlpha = n === hovered ? 1 : 0.85;
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = n === hovered ? 1 : n.degree > 0 ? 0.85 : 0.45;
         ctx.fill();
         ctx.globalAlpha = 1;
-        ctx.lineWidth = 2 / t.k;
-        ctx.strokeStyle = fg;
+        /* 用背景色描边做“光晕”，让节点从连线里干净地浮出来 */
+        ctx.lineWidth = 3 / t.k;
+        ctx.strokeStyle = bg;
         ctx.stroke();
 
         ctx.fillStyle = fg;
@@ -246,9 +248,17 @@ export function GraphCanvas({ data }: { data: GraphData }) {
     canvas.addEventListener("mouseleave", onLeave);
     window.addEventListener("resize", resize);
 
+    /* 切换主题时 CSS 变量会变，但 canvas 不会自动重绘，这里显式监听根节点 class */
+    const themeObserver = new MutationObserver(() => draw());
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
     draw();
 
     return () => {
+      themeObserver.disconnect();
       simulation.stop();
       canvas.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mousemove", onMouseMove);
@@ -283,7 +293,7 @@ export function GraphCanvas({ data }: { data: GraphData }) {
 
       <div
         ref={wrapRef}
-        className="relative h-[560px] w-full overflow-hidden rounded-xl border border-border bg-surface/40"
+        className="relative h-[420px] w-full overflow-hidden rounded-xl border border-border bg-surface/40 sm:h-[560px]"
       >
         <canvas ref={canvasRef} className="block h-full w-full" />
         {hovered && (

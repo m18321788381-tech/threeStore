@@ -6,45 +6,105 @@
 /* ------------------------------------------------------------------ 设计系统 */
 /* 对应设计文档 §6.1：内容优先、阅读友好、克制留白 */
 @layer base {
-  :root {
-    --bg: #ffffff;
-    --surface: #f8fafc;
-    --fg: #1e293b;
-    --fg-muted: #64748b;
-    --border: #e2e8f0;
+  /* 主题一 · 清朗：冷灰白，日间与代码阅读。默认跟随系统浅色。 */
+  :root,
+  .light {
+    color-scheme: light;
+    --bg: #fcfcfd;
+    --surface: #f5f6f8;
+    --fg: #1a1f2b;
+    --fg-muted: #5f6a7a;
+    --border: #e3e6ea;
+    --border-strong: #838c99;
     --accent: #2563eb;
     --accent-soft: rgba(37, 99, 235, 0.08);
-    --code-bg: #f8fafc;
+    --on-accent: #ffffff;
+    --code-bg: #f6f7f9;
     --term-bg: #1e293b;
     --term-fg: #e2e8f0;
+    --success: #15803d;
+    --warning: #b45309;
+    --error: #b91c1c;
+    --info: #0369a1;
     /* RGB 通道版：供 Tailwind 透明度修饰符（如 bg-surface/60）使用 */
-    --bg-rgb: 255 255 255;
-    --surface-rgb: 248 250 252;
-    --fg-rgb: 30 41 59;
-    --fg-muted-rgb: 100 116 139;
-    --border-rgb: 226 232 240;
+    --bg-rgb: 252 252 253;
+    --surface-rgb: 245 246 248;
+    --fg-rgb: 26 31 43;
+    --fg-muted-rgb: 95 106 122;
+    --border-rgb: 227 230 234;
+    --border-strong-rgb: 131 140 153;
     --accent-rgb: 37 99 235;
-    --code-bg-rgb: 248 250 252;
+    --code-bg-rgb: 246 247 249;
+    --success-rgb: 21 128 61;
+    --warning-rgb: 180 83 9;
+    --error-rgb: 185 28 28;
+    --info-rgb: 3 105 161;
   }
 
+  /* 主题二 · 纸墨：暖米色低刺激，长时间阅读首选。 */
+  .sepia {
+    color-scheme: light;
+    --bg: #faf6ec;
+    --surface: #f2ebdb;
+    --fg: #3a3226;
+    --fg-muted: #6b604d;
+    --border: #e0d6c1;
+    --border-strong: #8f7e66;
+    --accent: #8a4b1f;
+    --accent-soft: rgba(138, 75, 31, 0.1);
+    --on-accent: #faf6ec;
+    --code-bg: #f3ecdd;
+    --term-bg: #3a3226;
+    --term-fg: #f2ebdb;
+    --success: #4d6b28;
+    --warning: #9a5f10;
+    --error: #a3311f;
+    --info: #4a6076;
+    --bg-rgb: 250 246 236;
+    --surface-rgb: 242 235 219;
+    --fg-rgb: 58 50 38;
+    --fg-muted-rgb: 107 96 77;
+    --border-rgb: 224 214 193;
+    --border-strong-rgb: 143 126 102;
+    --accent-rgb: 138 75 31;
+    --code-bg-rgb: 243 236 221;
+    --success-rgb: 77 107 40;
+    --warning-rgb: 154 95 16;
+    --error-rgb: 163 49 31;
+    --info-rgb: 74 96 118;
+  }
+
+  /* 主题三 · 夜读：低亮深蓝，夜间护眼。沿用 .dark 类名以复用语法高亮覆写。 */
   .dark {
-    --bg: #0f172a;
-    --surface: #131c31;
-    --fg: #e2e8f0;
-    --fg-muted: #94a3b8;
-    --border: #1e293b;
-    --accent: #60a5fa;
-    --accent-soft: rgba(96, 165, 250, 0.14);
-    --code-bg: #1e1e2e;
-    --term-bg: #0b1120;
-    --term-fg: #22c55e;
-    --bg-rgb: 15 23 42;
-    --surface-rgb: 19 28 49;
-    --fg-rgb: 226 232 240;
-    --fg-muted-rgb: 148 163 184;
-    --border-rgb: 30 41 59;
-    --accent-rgb: 96 165 250;
-    --code-bg-rgb: 30 30 46;
+    color-scheme: dark;
+    --bg: #0e141f;
+    --surface: #161d2b;
+    --fg: #dfe6ef;
+    --fg-muted: #96a3b4;
+    --border: #253044;
+    --border-strong: #59708f;
+    --accent: #6ea8fe;
+    --accent-soft: rgba(110, 168, 254, 0.16);
+    --on-accent: #0b1220;
+    --code-bg: #131a26;
+    --term-bg: #080d15;
+    --term-fg: #4ade80;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --error: #f87171;
+    --info: #7dd3fc;
+    --bg-rgb: 14 20 31;
+    --surface-rgb: 22 29 43;
+    --fg-rgb: 223 230 239;
+    --fg-muted-rgb: 150 163 180;
+    --border-rgb: 37 48 68;
+    --border-strong-rgb: 89 112 143;
+    --accent-rgb: 110 168 254;
+    --code-bg-rgb: 19 26 38;
+    --success-rgb: 74 222 128;
+    --warning-rgb: 251 191 36;
+    --error-rgb: 248 113 113;
+    --info-rgb: 125 211 252;
   }
 
   * {
@@ -53,8 +113,9 @@
 
   html {
     scroll-behavior: smooth;
-    scroll-padding-top: 5rem;
+    scroll-padding-top: 5.5rem;
     -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -62,6 +123,12 @@
     color: var(--fg);
     font-feature-settings: "cv02", "cv03", "cv04";
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* 焦点可见：键盘导航必须看到落点，兜住各输入框的 outline-none */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   ::selection {
@@ -77,6 +144,9 @@
     background: var(--border);
     border-radius: 999px;
   }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--fg-muted);
+  }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
@@ -87,22 +157,92 @@
     @apply mx-auto w-full max-w-container px-5 sm:px-6 lg:px-8;
   }
 
+  /* --------------------------------------------------------- 页头与分节 */
+  /* 列表页共用同一套标题尺度与间距，保证跨页视觉对齐 */
+  .page-head {
+    @apply mb-10 max-w-content;
+  }
+  .page-title {
+    @apply text-3xl font-bold leading-tight tracking-tight;
+  }
+  .page-desc {
+    @apply mt-2.5 text-body text-muted;
+  }
+  /* 页内一级分节标题 */
+  .section-title {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  /* 侧栏与卡片内的小标题 */
+  .side-title {
+    @apply text-sm font-semibold tracking-tight;
+  }
+
+  /* ---------------------------------------------------------------- 卡片 */
   .card {
     @apply rounded-xl border border-border bg-surface/60 transition-colors;
   }
+  .card-hover {
+    @apply hover:border-accent hover:shadow-sm hover:shadow-black/5;
+  }
 
+  /* ---------------------------------------------------------------- 标签 */
   .chip {
     @apply inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-accent hover:text-accent;
   }
+  .chip-sm {
+    @apply chip px-2 py-0.5 text-xs;
+  }
 
+  /* ---------------------------------------------------------------- 按钮 */
+  /* 统一带 1px 透明边框，避免实心与描边按钮高度不一致 */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-accent text-white hover:opacity-90;
+    @apply btn bg-accent text-on-accent hover:bg-accent/90;
   }
   .btn-ghost {
-    @apply btn border border-border hover:border-accent hover:text-accent;
+    @apply btn border-border hover:border-accent hover:text-accent;
+  }
+  /* 尺寸修饰放在最后，确保覆盖上面的默认内边距 */
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  /* 列表行内小操作按钮：统一高度、圆角与悬停反馈 */
+  .row-action {
+    @apply inline-flex items-center justify-center rounded-lg border border-border px-2.5 py-1 text-xs text-muted transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .row-action-danger {
+    @apply row-action text-error hover:border-error hover:text-error;
+  }
+
+  /* 状态徽标：语义色一律走 token，三套主题下都能保持对比度 */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium;
+  }
+  .badge-accent {
+    @apply badge bg-accent-soft text-accent;
+  }
+  .badge-success {
+    @apply badge bg-success/10 text-success;
+  }
+  .badge-warning {
+    @apply badge bg-warning/10 text-warning;
+  }
+  .badge-error {
+    @apply badge bg-error/10 text-error;
+  }
+  .badge-muted {
+    @apply badge bg-muted/10 text-muted;
+  }
+
+  /* ------------------------------------------------------------ 表单控件 */
+  .input {
+    @apply w-full rounded-lg border border-border-strong bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent;
+  }
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium;
   }
 }
 
@@ -388,5 +528,25 @@
   }
   100% {
     background-position: 0 50%;
+  }
+}
+
+/* ------------------------------------------------------------ 动效偏好 */
+/* 前庭功能障碍用户会开启此设置：关掉装饰动画，保留功能性过渡 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .terminal-cursor,
+  .skeleton {
+    animation: none !important;
   }
 }

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Header() {
   const pathname = usePathname();
@@ -24,16 +24,16 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 w-full border-b border-transparent transition-colors",
-        scrolled && "border-border bg-background/85 backdrop-blur"
+        "sticky top-0 z-40 w-full border-b bg-background/85 backdrop-blur transition-colors",
+        scrolled ? "border-border shadow-sm shadow-black/5" : "border-border/50"
       )}
     >
       <div className="container-page flex h-16 items-center gap-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent">
             {siteConfig.title.slice(0, 1)}
           </span>
-          <span className="text-[15px] font-semibold tracking-tight">
+          <span className="text-body font-semibold tracking-tight">
             {siteConfig.title}
           </span>
         </Link>
@@ -69,10 +69,7 @@ export function Header() {
           >
             <span aria-hidden>⌕</span>
           </Link>
-          <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[10px] text-muted lg:inline">
-            Ctrl K
-          </kbd>
-          <ThemeToggle />
+          <ThemeSwitcher />
           <button
             type="button"
             aria-label="菜单"

@@ -10,10 +10,10 @@ import { formatDateTime } from "@/lib/utils";
 import type { Paginated, AdminComment } from "@/types";
 
 const STATUS: Record<number, { label: string; className: string }> = {
-  0: { label: "待审", className: "bg-amber-500/10 text-amber-600" },
-  1: { label: "已通过", className: "bg-green-500/10 text-green-600" },
-  2: { label: "已驳回", className: "bg-red-500/10 text-red-500" },
-  3: { label: "垃圾", className: "bg-zinc-500/10 text-zinc-500" },
+  0: { label: "待审", className: "badge badge-warning" },
+  1: { label: "已通过", className: "badge badge-success" },
+  2: { label: "已驳回", className: "badge badge-error" },
+  3: { label: "垃圾", className: "badge badge-muted" },
 };
 
 export function CommentsPanel() {
@@ -98,15 +98,15 @@ export function CommentsPanel() {
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span className="font-medium text-foreground">{c.author_name}</span>
                   {c.is_author && (
-                    <span className="rounded bg-accent-soft px-1.5 py-0.5 text-accent">
+                    <span className="badge badge-accent">
                       作者
                     </span>
                   )}
-                  <span className={`rounded px-1.5 py-0.5 ${meta.className}`}>
+                  <span className={meta.className}>
                     {meta.label}
                   </span>
                   {c.is_pinned && (
-                    <span className="rounded border border-border px-1.5 py-0.5 text-muted">
+                    <span className="badge badge-muted">
                       置顶
                     </span>
                   )}
@@ -134,7 +134,7 @@ export function CommentsPanel() {
                         type="button"
                         disabled={update.isPending}
                         onClick={() => update.mutate({ id: c.id, body: { status: 1 } })}
-                        className="rounded border border-border px-2 py-1 text-muted hover:border-accent hover:text-accent"
+                        className="row-action"
                       >
                         通过
                       </button>
@@ -144,7 +144,7 @@ export function CommentsPanel() {
                         type="button"
                         disabled={update.isPending}
                         onClick={() => update.mutate({ id: c.id, body: { status: 2 } })}
-                        className="rounded border border-border px-2 py-1 text-muted hover:border-accent hover:text-accent"
+                        className="row-action"
                       >
                         驳回
                       </button>
@@ -155,7 +155,7 @@ export function CommentsPanel() {
                       onClick={() =>
                         update.mutate({ id: c.id, body: { is_pinned: !c.is_pinned } })
                       }
-                      className="rounded border border-border px-2 py-1 text-muted hover:border-accent hover:text-accent"
+                      className="row-action"
                     >
                       {c.is_pinned ? "取消置顶" : "置顶"}
                     </button>
@@ -167,7 +167,7 @@ export function CommentsPanel() {
                           remove.mutate(c.id);
                         }
                       }}
-                      className="rounded border border-border px-2 py-1 text-red-500 hover:border-red-500"
+                      className="row-action-danger"
                     >
                       删除
                     </button>
@@ -185,7 +185,7 @@ export function CommentsPanel() {
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="chip disabled:opacity-50"
+            className="chip h-8 disabled:opacity-50"
           >
             上一页
           </button>
@@ -196,7 +196,7 @@ export function CommentsPanel() {
             type="button"
             disabled={page >= result.pages}
             onClick={() => setPage((p) => p + 1)}
-            className="chip disabled:opacity-50"
+            className="chip h-8 disabled:opacity-50"
           >
             下一页
           </button>

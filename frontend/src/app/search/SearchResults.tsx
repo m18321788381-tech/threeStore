@@ -51,9 +51,9 @@ function SearchBox({ defaultQuery }: { defaultQuery: string }) {
         name="q"
         defaultValue={defaultQuery}
         placeholder="搜索文章…"
-        className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+        className="input flex-1"
       />
-      <button type="submit" className="btn-primary !py-1.5">
+      <button type="submit" className="btn-primary btn-sm">
         搜索
       </button>
     </form>

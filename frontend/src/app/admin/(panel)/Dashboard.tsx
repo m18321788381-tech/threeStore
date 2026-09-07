@@ -64,18 +64,18 @@ export function Dashboard() {
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold">快捷操作</h2>
+        <h2 className="side-title">快捷操作</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Link href="/admin/posts/new" className="btn-primary !py-1.5 text-xs">
+          <Link href="/admin/posts/new" className="btn-primary btn-sm">
             写新文章
           </Link>
-          <Link href="/admin/comments?status=0" className="btn-ghost !py-1.5 text-xs">
+          <Link href="/admin/comments?status=0" className="btn-ghost btn-sm">
             审核待处理评论
           </Link>
-          <Link href="/admin/media" className="btn-ghost !py-1.5 text-xs">
+          <Link href="/admin/media" className="btn-ghost btn-sm">
             上传图片
           </Link>
-          <Link href="/garden" className="btn-ghost !py-1.5 text-xs">
+          <Link href="/garden" className="btn-ghost btn-sm">
             查看知识图谱
           </Link>
         </div>

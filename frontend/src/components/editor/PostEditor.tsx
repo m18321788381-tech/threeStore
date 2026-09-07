@@ -109,7 +109,7 @@ export function PostEditor({ postId }: { postId?: string }) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="文章标题"
-          className="min-w-[240px] flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-lg font-semibold outline-none focus:border-accent"
+          className="input min-w-[240px] flex-1 text-lg font-semibold"
         />
         <div className="flex items-center gap-2">
           <button
@@ -132,33 +132,33 @@ export function PostEditor({ postId }: { postId?: string }) {
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/5 px-3 py-2 text-sm text-red-500">
+        <p className="rounded-lg border border-error/40 bg-error/5 px-3 py-2 text-sm text-error">
           {error}
         </p>
       )}
       {saved && (
-        <p className="rounded-lg border border-green-500/40 bg-green-500/5 px-3 py-2 text-sm text-green-600">
+        <p className="rounded-lg border border-success/40 bg-success/5 px-3 py-2 text-sm text-success">
           {saved}
         </p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
-          <span className="mb-1.5 block text-muted">Slug（留空自动生成）</span>
+          <span className="field-label text-muted">Slug（留空自动生成）</span>
           <input
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="my-first-post"
-            className="w-full rounded-lg border border-border bg-transparent px-3 py-2 font-mono text-sm outline-none focus:border-accent"
+            className="input font-mono"
           />
         </label>
 
         <label className="text-sm">
-          <span className="mb-1.5 block text-muted">分类</span>
+          <span className="field-label text-muted">分类</span>
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            className="input"
           >
             <option value="">未分类</option>
             {(categories || []).map((c: Category) => (
@@ -171,27 +171,27 @@ export function PostEditor({ postId }: { postId?: string }) {
       </div>
 
       <label className="block text-sm">
-        <span className="mb-1.5 block text-muted">摘要</span>
+        <span className="field-label text-muted">摘要</span>
         <textarea
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           rows={2}
-          className="w-full resize-y rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+          className="input resize-y"
         />
       </label>
 
       <label className="block text-sm">
-        <span className="mb-1.5 block text-muted">封面图 URL（可选）</span>
+        <span className="field-label text-muted">封面图 URL（可选）</span>
         <input
           value={coverUrl}
           onChange={(e) => setCoverUrl(e.target.value)}
           placeholder="/media/xxx.png"
-          className="w-full rounded-lg border border-border bg-transparent px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+          className="input font-mono text-xs"
         />
       </label>
 
       <div>
-        <span className="mb-2 block text-sm text-muted">标签</span>
+        <span className="field-label text-muted">标签</span>
         <div className="flex flex-wrap gap-2">
           {(tags || []).map((t: Tag) => {
             const active = tagIds.includes(t.id);

@@ -30,7 +30,7 @@ export function LoginForm() {
   return (
     <form onSubmit={submit} className="mt-8 space-y-4 rounded-xl border border-border p-6">
       <div>
-        <label htmlFor="username" className="mb-1.5 block text-sm">
+        <label htmlFor="username" className="field-label">
           用户名
         </label>
         <input
@@ -38,12 +38,12 @@ export function LoginForm() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
-          className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+          className="input"
         />
       </div>
 
       <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm">
+        <label htmlFor="password" className="field-label">
           密码
         </label>
         <input
@@ -52,11 +52,11 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          className="w-full rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+          className="input"
         />
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-error">{error}</p>}
 
       <button type="submit" disabled={loading} className="btn-primary w-full">
         {loading ? "登录中…" : "登录"}

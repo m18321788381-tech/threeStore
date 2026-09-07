@@ -40,13 +40,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-8">
+      <header className="page-head">
         <p className="text-sm text-muted">分类</p>
-        <h1 className="mt-1 text-3xl font-bold">{category.name}</h1>
+        <h1 className="page-title mt-1">{category.name}</h1>
         {category.description && (
-          <p className="mt-2 text-sm text-muted">{category.description}</p>
+          <p className="page-desc">{category.description}</p>
         )}
-        <p className="mt-3 text-xs text-muted">共 {data?.total ?? 0} 篇</p>
+        <p className="mt-2 text-meta text-muted">共 {data?.total ?? 0} 篇</p>
       </header>
 
       {!data || data.items.length === 0 ? (

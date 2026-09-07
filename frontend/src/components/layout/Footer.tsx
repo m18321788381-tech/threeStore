@@ -3,11 +3,11 @@ import { siteConfig } from "@/lib/site";
 
 export function Footer() {
   return (
-    <footer className="mt-24 border-t border-border">
+    <footer className="border-t border-border">
       <div className="container-page grid gap-8 py-12 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-sm font-bold text-on-accent">
               {siteConfig.title.slice(0, 1)}
             </span>
             <span className="font-semibold">{siteConfig.title}</span>
@@ -64,7 +64,7 @@ export function Footer() {
           <span>
             © {new Date().getFullYear()} {siteConfig.author} · 用 Next.js 与 FastAPI 搭建
           </span>
-          <span className="font-mono">按 Ctrl+K 唤出终端</span>
+          <span className="font-mono">按 Ctrl/⌘ + K 唤出终端</span>
         </div>
       </div>
     </footer>

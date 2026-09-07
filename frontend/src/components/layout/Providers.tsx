@@ -18,6 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <NextThemesProvider
         attribute="class"
+        themes={["light", "sepia", "dark"]}
         defaultTheme="system"
         enableSystem
         disableTransitionOnChange

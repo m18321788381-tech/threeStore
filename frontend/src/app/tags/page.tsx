@@ -12,9 +12,9 @@ export default async function TagsPage() {
 
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-10">
-        <h1 className="text-3xl font-bold">标签</h1>
-        <p className="mt-2 text-sm text-muted">共 {tags?.length ?? 0} 个标签。</p>
+      <header className="page-head">
+        <h1 className="page-title">标签</h1>
+        <p className="page-desc">共 {tags?.length ?? 0} 个标签。</p>
       </header>
 
       {!tags || tags.length === 0 ? (

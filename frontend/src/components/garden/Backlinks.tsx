@@ -10,9 +10,9 @@ export function Backlinks({ data }: { data: LinkData }) {
   return (
     <section className="mt-14 grid gap-4 border-t border-border pt-8 sm:grid-cols-2">
       <div>
-        <h2 className="text-sm font-semibold">
+        <h2 className="side-title">
           本文引用了
-          <span className="ml-2 rounded bg-accent-soft px-1.5 py-0.5 text-xs font-normal text-accent">
+          <span className="badge badge-accent ml-2 font-normal">
             {data.outbound.length}
           </span>
         </h2>
@@ -22,7 +22,7 @@ export function Backlinks({ data }: { data: LinkData }) {
               <li key={item.slug}>
                 <Link
                   href={`/posts/${item.slug}`}
-                  className="group block rounded-lg border border-border p-3 hover:border-accent/60"
+                  className="group block rounded-lg border border-border p-3 card-hover"
                 >
                   <span className="text-sm font-medium group-hover:text-accent">
                     {item.title}
@@ -42,9 +42,9 @@ export function Backlinks({ data }: { data: LinkData }) {
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold">
+        <h2 className="side-title">
           引用本文的笔记
-          <span className="ml-2 rounded bg-accent-soft px-1.5 py-0.5 text-xs font-normal text-accent">
+          <span className="badge badge-accent ml-2 font-normal">
             {data.backlinks.length}
           </span>
         </h2>
@@ -54,7 +54,7 @@ export function Backlinks({ data }: { data: LinkData }) {
               <li key={item.slug}>
                 <Link
                   href={`/posts/${item.slug}`}
-                  className="group block rounded-lg border border-border p-3 hover:border-accent/60"
+                  className="group block rounded-lg border border-border p-3 card-hover"
                 >
                   <span className="text-sm font-medium group-hover:text-accent">
                     {item.title}

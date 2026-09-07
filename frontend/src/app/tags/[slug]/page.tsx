@@ -37,10 +37,10 @@ export default async function TagPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-content">
-      <header className="mb-8">
+      <header className="page-head">
         <p className="text-sm text-muted">标签</p>
-        <h1 className="mt-1 text-3xl font-bold">#{tag.name}</h1>
-        <p className="mt-3 text-xs text-muted">共 {data?.total ?? 0} 篇</p>
+        <h1 className="page-title mt-1">#{tag.name}</h1>
+        <p className="mt-2 text-meta text-muted">共 {data?.total ?? 0} 篇</p>
       </header>
 
       {!data || data.items.length === 0 ? (

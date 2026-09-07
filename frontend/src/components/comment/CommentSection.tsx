@@ -60,14 +60,14 @@ function CommentForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="昵称（选填）"
           maxLength={50}
-          className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+          className="input"
         />
         <input
           value={site}
           onChange={(e) => setSite(e.target.value)}
           placeholder="个人站点（选填）"
           maxLength={255}
-          className="rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+          className="input"
         />
       </div>
       <textarea
@@ -76,13 +76,13 @@ function CommentForm({
         placeholder="说点什么…（支持纯文本，提交后需博主审核）"
         rows={compact ? 3 : 4}
         maxLength={2000}
-        className="mt-2 w-full resize-y rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+        className="input mt-2 resize-y"
       />
       <div className="mt-3 flex items-center gap-3">
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="btn-primary !py-1.5"
+          className="btn-primary btn-sm"
         >
           {mutation.isPending ? "提交中…" : parentId ? "回复" : "发表评论"}
         </button>
@@ -91,7 +91,7 @@ function CommentForm({
             取消
           </button>
         )}
-        {error && <span className="text-sm text-red-500">{error}</span>}
+        {error && <span className="text-sm text-error">{error}</span>}
       </div>
     </form>
   );
@@ -114,7 +114,7 @@ function CommentItem({
         <span
           className={cn(
             "grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-medium",
-            comment.is_author ? "bg-accent text-white" : "border border-border text-muted"
+            comment.is_author ? "badge badge-accent" : "border border-border text-muted"
           )}
         >
           {initials(comment.author_name)}
@@ -138,7 +138,7 @@ function CommentItem({
             </span>
           </div>
 
-          <p className="mt-1.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+          <p className="mt-1.5 whitespace-pre-wrap break-words text-body">
             {comment.content}
           </p>
 

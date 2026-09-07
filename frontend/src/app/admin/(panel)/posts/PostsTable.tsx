@@ -97,10 +97,10 @@ export function PostsTable() {
                   <td className="px-4 py-3 text-muted">{post.category?.name || "—"}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded px-1.5 py-0.5 text-xs ${
+                      className={`${
                         post.status === 1
-                          ? "bg-green-500/10 text-green-600"
-                          : "bg-accent-soft text-accent"
+                          ? "badge badge-success"
+                          : "badge badge-accent"
                       }`}
                     >
                       {STATUS_LABEL[post.status] ?? "未知"}
@@ -118,13 +118,13 @@ export function PostsTable() {
                         onClick={() =>
                           toggle.mutate({ id: post.id, next: post.status === 1 ? 0 : 1 })
                         }
-                        className="rounded border border-border px-2 py-1 text-muted hover:border-accent hover:text-accent"
+                        className="row-action"
                       >
                         {post.status === 1 ? "转为草稿" : "发布"}
                       </button>
                       <Link
                         href={`/admin/posts/${post.id}/edit`}
-                        className="rounded border border-border px-2 py-1 text-muted hover:border-accent hover:text-accent"
+                        className="row-action"
                       >
                         编辑
                       </Link>
@@ -136,7 +136,7 @@ export function PostsTable() {
                             remove.mutate(post.id);
                           }
                         }}
-                        className="rounded border border-border px-2 py-1 text-red-500 hover:border-red-500"
+                        className="row-action-danger"
                       >
                         删除
                       </button>

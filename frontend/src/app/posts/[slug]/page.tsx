@@ -110,12 +110,12 @@ export default async function PostPage({ params }: Props) {
             )}
           </div>
 
-          <h1 className="mt-4 text-3xl font-bold leading-tight sm:text-[34px]">
+          <h1 className="page-title mt-4 sm:text-[2.125rem]">
             {post.title}
           </h1>
 
           {post.summary && (
-            <p className="mt-4 border-l-2 border-accent/60 pl-4 text-[15px] leading-relaxed text-muted">
+            <p className="mt-5 border-l-2 border-accent/60 pl-4 text-lead leading-relaxed text-muted">
               {post.summary}
             </p>
           )}
