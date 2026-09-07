@@ -8,13 +8,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
+from pathlib import Path
 
-from sqlalchemy import select
+# 以 `python scripts/init_admin.py` 直跑时 sys.path[0] 是 scripts/，需把项目根（容器内 /app）加入
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.config import settings
-from app.core.security import hash_password
-from app.db.session import SessionLocal
-from app.models.user import User
+from sqlalchemy import select  # noqa: E402
+
+from app.core.config import settings  # noqa: E402
+from app.core.security import hash_password  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 
 async def main(reset: bool = False) -> None:

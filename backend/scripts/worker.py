@@ -11,11 +11,16 @@ from __future__ import annotations
 
 import asyncio
 import signal
+import sys
+from pathlib import Path
 
-from app.core.cache import subscribe, INVALIDATE_CHANNEL
-from app.core.config import settings
-from app.db.session import SessionLocal
-from app.services.seo import refresh_seo_cache
+# 以 `python scripts/worker.py` 直跑时 sys.path[0] 是 scripts/，需把项目根（容器内 /app）加入
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.core.cache import subscribe, INVALIDATE_CHANNEL  # noqa: E402
+from app.core.config import settings  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
+from app.services.seo import refresh_seo_cache  # noqa: E402
 
 _running = True
 

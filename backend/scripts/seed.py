@@ -10,18 +10,23 @@ import argparse
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
+import sys
+from pathlib import Path
 
-from sqlalchemy import func, select, text
+# 以 `python scripts/seed.py` 直跑时 sys.path[0] 是 scripts/，需把项目根（容器内 /app）加入
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.core.enums import PostStatus
-from app.db.session import SessionLocal
-from app.models.category import Category
-from app.models.comment import Comment
-from app.models.post import Post
-from app.models.tag import Tag
-from app.models.user import User
-from app.services.links import render_post_content, sync_post_links
-from app.services.slug import slugify_title
+from sqlalchemy import func, select, text  # noqa: E402
+
+from app.core.enums import PostStatus  # noqa: E402
+from app.db.session import SessionLocal  # noqa: E402
+from app.models.category import Category  # noqa: E402
+from app.models.comment import Comment  # noqa: E402
+from app.models.post import Post  # noqa: E402
+from app.models.tag import Tag  # noqa: E402
+from app.models.user import User  # noqa: E402
+from app.services.links import render_post_content, sync_post_links  # noqa: E402
+from app.services.slug import slugify_title  # noqa: E402
 
 NOW = datetime.now(tz=timezone.utc)
 
