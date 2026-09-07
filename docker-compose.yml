@@ -5,7 +5,7 @@
 #   db        PostgreSQL 16（数据卷持久化）
 #
 # 设计文档曾规划 6 容器（含 redis / worker）。本仓库把评论限流、Markdown 渲染等
-# 设计为进程内/同步执行，无需独立 worker；redis 作为可选服务见 docker-compose.override.yml。
+# 设计为进程内/同步执行，无需独立 worker；redis 作为可选服务见 docker-compose.redis.yml。
 # 若要严格 6 容器可在此基础上扩展，请参考 README「扩展」一节。
 
 services:
@@ -17,7 +17,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-blog}
       POSTGRES_DB: ${DB_NAME:-blog}
     volumes:
-      - ${POSTGRES_DATA:-blog_pgdata}:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-blog} -d ${DB_NAME:-blog}"]
       interval: 10s
@@ -88,3 +88,7 @@ networks:
 
 volumes:
   media_data:
+  # Compose 只对 YAML「值」做变量插值，不对「键」插值：服务引用的逻辑卷名必须是字面量，
+  # 因此固定用 pgdata，真实卷名再由 name 读取 .env 的 POSTGRES_DATA。
+  pgdata:
+    name: ${POSTGRES_DATA:-blog_pgdata}

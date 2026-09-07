@@ -17,7 +17,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ${POSTGRES_DATA:-blog_pgdata}:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-blog} -d ${DB_NAME:-blog}"]
       interval: 10s
@@ -47,3 +47,6 @@ services:
 
 volumes:
   media_data:
+  # 同 docker-compose.yml：键不做变量插值，逻辑卷名固定，真实卷名用 name 覆盖
+  pgdata:
+    name: ${POSTGRES_DATA:-blog_pgdata}
