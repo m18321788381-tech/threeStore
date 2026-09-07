@@ -28,6 +28,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+      args:
+        # 构建加速：APT_BUILD_DEPS 有意不传，保留 Dockerfile.dev 默认的 curl
+        APT_MIRROR_HOST: ${APT_MIRROR_HOST:-mirrors.cloud.tencent.com}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.cloud.tencent.com/pypi/simple}
     restart: unless-stopped
     env_file: .env
     environment:

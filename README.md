@@ -87,6 +87,9 @@ cp .env.example .env          # 按部署环境修改密钥与站点信息
 docker compose up -d --build  # 构建并启动 4 个服务
 ```
 
+> 国内云主机上构建慢多半是拉官方源：`.env` 已预置 `APT_MIRROR_HOST` / `APK_MIRROR_HOST` / `PIP_INDEX_URL` / `NPM_REGISTRY`
+> 指向 `mirrors.cloud.tencent.com`，腾讯云 CVM 可改成内网源 `mirrors.tencentyun.com`。后端构建默认不再安装 gcc（依赖均有预编译 wheel）。
+
 启动后访问 `http://localhost`（或你配置的域名）。后端容器启动时会自动 `alembic upgrade head`，无需手动迁移。
 
 常用命令（见 Makefile）：
@@ -143,6 +146,7 @@ docker compose exec backend python scripts/init_admin.py
 | `COMMENT_*` | 反垃圾评论阈值 | 见 `config.py` |
 | `ADMIN_*` | 引导管理员账号 | `admin` |
 | `HTTP_PORT/HTTPS_PORT/POSTGRES_DATA` | 暴露端口与数据卷名 | 80 / 443 / `blog_pgdata` |
+| `APT_MIRROR_HOST/APK_MIRROR_HOST/PIP_INDEX_URL/NPM_REGISTRY` | 构建加速镜像源 | `mirrors.cloud.tencent.com` 系列 |
 
 ---
 

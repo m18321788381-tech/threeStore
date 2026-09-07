@@ -5,7 +5,9 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 # 在依赖安装阶段先用 --ignore-engines 宽容锁版本，避免阻塞
 COPY package.json package-lock.json* ./
-RUN npm install --no-audit --no-fund
+# npm 源，国内云主机用镜像站可显著提速；显式传空值即回退官方源
+ARG NPM_REGISTRY=https://mirrors.cloud.tencent.com/npm/
+RUN npm install --no-audit --no-fund --registry="${NPM_REGISTRY:-https://registry.npmjs.org}"
 COPY . .
 # 构建期注入内网后端地址（Next 服务端转发用），浏览器同源仍走 /api
 ARG INTERNAL_API_URL=http://backend:8000

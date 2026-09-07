@@ -29,6 +29,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        # 与 backend 同源构建，构建加速参数保持一致
+        APT_MIRROR_HOST: ${APT_MIRROR_HOST:-mirrors.cloud.tencent.com}
+        APT_BUILD_DEPS: ${APT_BUILD_DEPS:-}
+        APT_RUNTIME_DEPS: ${APT_RUNTIME_DEPS:-libpq5 curl}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.cloud.tencent.com/pypi/simple}
     restart: unless-stopped
     env_file: .env
     environment:
