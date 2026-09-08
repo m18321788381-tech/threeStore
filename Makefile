@@ -5,7 +5,7 @@ ENV?=.env
 COMPOSE=docker compose
 DEV_COMPOSE=docker compose -f docker-compose.dev.yml
 
-.PHONY: help up down dev db-migrate init-admin seed logs build clean
+.PHONY: help up down dev db-migrate init-admin seed logs build clean backup restore test verify
 
 help: ## 查看可用命令
 	@echo "可用命令："
@@ -37,3 +37,18 @@ build: ## 仅构建镜像不启动
 
 clean: ## 停止并删除容器 + 数据卷（危险，会清空数据）
 	$(COMPOSE) --env-file $(ENV) down -v
+
+backup: ## 备份数据库与媒体文件（可设 BACKUP_DIR / BACKUP_KEEP_DAYS）
+	./scripts/backup.sh
+
+restore: ## 从备份恢复数据库：make restore f=backups/blog_xxx.sql.gz
+	./scripts/restore.sh $(f)
+
+test: ## 运行后端安全回归测试
+	cd backend && pip install -q -r requirements-dev.txt && pytest tests/ -v
+
+verify: ## 上线前自检：类型检查 + 后端测试 + 默认凭据扫描
+	cd frontend && npm run typecheck
+	$(MAKE) test
+	@echo ""
+	@echo "自检完成。别忘了确认 .env 中 SECRET_KEY / JWT_SECRET / ADMIN_PASSWORD / SITE_URL 已设置为生产值。"

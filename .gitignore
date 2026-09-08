@@ -38,6 +38,12 @@ Thumbs.db
 .workbuddy/
 .adnify/
 
+# ===== TypeScript 增量构建缓存（本地产物，勿提交） =====
+*.tsbuildinfo
+
+# ===== 备份产物（含数据库 dump，勿提交） =====
+backups/
+
 # ===== Docker 本地证书（若生成） =====
 nginx/certbot/
 nginx/certs/

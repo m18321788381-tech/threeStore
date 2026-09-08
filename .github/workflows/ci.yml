@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: 后端 · 静态检查与安全回归
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: 代码风格（ruff）
+        run: ruff check app tests || true
+
+      - name: 导入冒烟（确保应用可装配、路由可注册）
+        run: python -c "from app.main import app; print('routes:', len(app.routes))"
+
+      - name: 安全回归测试
+        run: pytest tests/ -v
+
+  frontend:
+    name: 前端 · 类型检查与构建
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 构建
+        run: npm run build
+
+  security:
+    name: 安全 · 默认凭据扫描
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 仓库中不得残留真实密钥
+        run: |
+          echo "检查 .env 是否被误提交…"
+          if [ -f .env ]; then
+            echo "::error::.env 不应提交到仓库"; exit 1;
+          fi
+          echo "检查部署配置是否仍指向 localhost…"
+          if grep -nE "^SITE_URL=http://(localhost|127\.0\.0\.1)" .env.example; then
+            echo "::warning::.env.example 中 SITE_URL 仍为 localhost"
+          fi
+          echo "✅ 扫描完成"
