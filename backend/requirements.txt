@@ -29,5 +29,9 @@ bleach[css]==6.2.0
 # ---- Utils ----
 python-slugify==8.0.4
 
+# ---- 上传安全：位图真解码校验（防 polyglot 伪装）+ SVG XML 净化（防 XSS）----
+pillow==11.0.0
+defusedxml==0.7.1
+
 # ---- Redis（可选；worker / SEO 缓存 / 未来限流） ----
 redis==5.2.1

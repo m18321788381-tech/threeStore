@@ -22,7 +22,7 @@ export default function LoginPage() {
       <p className="mt-5 text-center text-xs leading-relaxed text-muted">
         默认账号来自后端 <code className="font-mono">.env</code>：ADMIN_USERNAME / ADMIN_PASSWORD
         <br />
-        同一 IP 连续 10 次失败将锁定 10 分钟
+        同一 IP 连续 5 次失败将锁定 15 分钟
       </p>
     </div>
   );

@@ -1,6 +1,17 @@
-"""媒体上传：白名单校验 + 随机文件名 + 落盘媒体卷。"""
+"""媒体上传：MIME 白名单 + 真类型校验 + 随机文件名 + 落盘媒体卷。
+
+安全要点（曾出现过「恶意 SVG 造成同源存储型 XSS」）：
+1. **不信任 Content-Type**：位图一律用 Pillow 真实解码并比对解码出的格式，
+   仅比对文件头会被「PNG 头 + 脚本内容」的 polyglot 文件绕过。
+2. **SVG 默认禁用**：SVG 是 XML，可内嵌脚本。确需开启时强制 XML 净化，
+   剔除 script / foreignObject / 事件属性 / 外部引用，并做二次断言。
+3. **随机文件名**：杜绝路径穿越与覆盖。
+4. **响应侧加固**：由 Nginx 为 /media/ 下发 `nosniff` 与沙箱 CSP（见 nginx/default.conf）。
+"""
 from __future__ import annotations
 
+import io
+import re
 import uuid
 from pathlib import Path
 
@@ -29,10 +40,179 @@ ALLOWED_MIME = {
     "image/png": ".png",
     "image/gif": ".gif",
     "image/webp": ".webp",
-    "image/svg+xml": ".svg",
     "image/avif": ".avif",
+    "image/svg+xml": ".svg",
 }
+
+# Pillow 解码出的格式 → 期望的扩展名，用于识别「声明类型 ≠ 真实类型」
+_PIL_FORMAT_TO_EXT = {
+    "JPEG": ".jpg",
+    "PNG": ".png",
+    "GIF": ".gif",
+    "WEBP": ".webp",
+    "AVIF": ".avif",
+}
+
+# 文件头兜底校验（Pillow 不可用或 AVIF 无解码器时使用）
+_MAGIC_PREFIX = {
+    ".png": b"\x89PNG\r\n\x1a\n",
+    ".jpg": b"\xff\xd8\xff",
+    ".gif": (b"GIF87a", b"GIF89a"),
+    ".webp": b"RIFF",
+    ".avif": b"ftyp",
+}
+
+# ---- SVG 净化白名单 -------------------------------------------------------
+_SVG_ALLOWED_TAGS = {
+    "svg", "g", "defs", "symbol", "title", "desc", "metadata",
+    "path", "circle", "ellipse", "rect", "line", "polyline", "polygon",
+    "text", "tspan", "textpath", "marker",
+    "lineargradient", "radialgradient", "stop",
+    "clippath", "mask", "pattern", "style", "switch", "view",
+}
+_SVG_FORBIDDEN_TAGS = {
+    "script", "foreignobject", "iframe", "embed", "object", "audio", "video",
+    "animate", "animatemotion", "animatetransform", "set", "handler",
+    "listener", "image",  # <image> 可带外部 href，按需禁止
+}
+# 危险属性：事件处理器、外部/脚本协议引用
+_SVG_DANGEROUS_ATTR = re.compile(r"^on", re.I)
+_SVG_URL_VALUE = re.compile(r"url\s*\(|javascript:|data:\s*(?:text|image/svg)", re.I)
 MAX_BYTES = settings.MAX_UPLOAD_MB * 1024 * 1024
+
+
+def _verify_magic(data: bytes, ext: str) -> None:
+    """文件头兜底校验（Pillow 不可用时的退化方案）。"""
+    expect = _MAGIC_PREFIX.get(ext)
+    if expect is None:
+        return
+    if ext == ".gif":
+        if not any(data.startswith(sig) for sig in expect):  # type: ignore[union-attr]
+            raise HTTPException(status_code=400, detail="文件内容与类型不符")
+        return
+    if ext == ".webp":
+        if not data.startswith(b"RIFF") or data[8:12] != b"WEBP":
+            raise HTTPException(status_code=400, detail="文件内容与类型不符")
+        return
+    if ext == ".avif":
+        if data[4:8] != b"ftyp":
+            raise HTTPException(status_code=400, detail="文件内容与类型不符")
+        return
+    if not data.startswith(expect):  # type: ignore[arg-type]
+        raise HTTPException(status_code=400, detail="文件内容与类型不符")
+
+
+def _verify_image_content(data: bytes, ext: str) -> None:
+    """位图真校验：Pillow 解码 + 解码格式比对。
+
+    只比对文件头会被 polyglot（合法头 + 恶意载荷）绕过，
+    因此这里要求整个文件能被完整解码，且解码出的格式与声明一致。
+    """
+    try:
+        from PIL import Image  # 延迟导入：未安装时退化为文件头校验
+    except ImportError:  # pragma: no cover
+        _verify_magic(data, ext)
+        return
+
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img.verify()
+            real_format = (img.format or "").upper()
+    except Exception:
+        raise HTTPException(
+            status_code=400, detail="文件内容与声明类型不符，或文件已损坏"
+        )
+
+    # AVIF 需 Pillow ≥ 11.3 或额外解码器；识别不出时退回文件头校验，避免误杀
+    if ext == ".avif" and real_format == "":
+        _verify_magic(data, ext)
+        return
+
+    expected_ext = _PIL_FORMAT_TO_EXT.get(real_format)
+    if expected_ext and expected_ext != ext:
+        raise HTTPException(
+            status_code=400,
+            detail=f"文件真实类型为 {real_format}，与声明的 {ext.lstrip('.')} 不一致",
+        )
+    # Pillow 能解但不在映射表内（如 BMP/ICO 伪装成白名单类型）同样拒绝
+    if expected_ext is None and real_format not in ("", "AVIF"):
+        raise HTTPException(
+            status_code=400, detail=f"不支持的图片格式：{real_format}"
+        )
+
+
+def _sanitize_svg(data: bytes) -> bytes:
+    """SVG 净化：剔除脚本、事件属性与外部引用，返回安全的 SVG 字节。"""
+    try:
+        import defusedxml.ElementTree as DET  # type: ignore[import-not-found]
+        from xml.etree import ElementTree as ET
+    except ImportError:  # pragma: no cover
+        raise HTTPException(
+            status_code=500, detail="SVG 净化组件缺失，请联系管理员安装 defusedxml"
+        )
+
+    if len(data) > 512 * 1024:
+        raise HTTPException(status_code=400, detail="SVG 文件过大")
+
+    try:
+        root = DET.fromstring(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="SVG 解析失败，文件可能已损坏")
+
+    def local(tag: str) -> str:
+        return tag.split("}")[-1].lower()
+
+    # 1) 移除黑名单元素（script / foreignObject / 外部资源等）与非白名单元素。
+    #    保留其余合法图形，让「带一段恶意代码的正常图标」也能安全入库。
+    parent_map = {child: parent for parent in root.iter() for child in parent}
+    for el in list(root.iter()):
+        tag = local(el.tag)
+        if not isinstance(el.tag, str):  # 注释 / PI 节点
+            continue
+        if tag in _SVG_ALLOWED_TAGS:
+            continue
+        parent = parent_map.get(el)
+        if parent is None:
+            # 根元素本身就不合法，没有净化价值，直接拒绝
+            raise HTTPException(
+                status_code=400, detail=f"SVG 根元素不被允许：<{tag}>"
+            )
+        parent.remove(el)
+
+    # 2) 清洗属性：事件处理器、外部/脚本协议引用
+    for el in root.iter():
+        for attr in list(el.attrib):
+            name = attr.split("}")[-1].lower()
+            value = el.attrib.get(attr, "")
+            if _SVG_DANGEROUS_ATTR.match(name):
+                del el.attrib[attr]
+                continue
+            if name in {"href", "xlink:href", "src", "from", "to", "values"}:
+                # 仅允许同文档内的 #id 引用
+                if not value.strip().startswith("#"):
+                    del el.attrib[attr]
+                    continue
+            if _SVG_URL_VALUE.search(value):
+                del el.attrib[attr]
+
+    # 序列化前注册默认命名空间，避免输出 ns0:circle 这类带前缀的标签
+    for prefix, uri in (
+        ("", "http://www.w3.org/2000/svg"),
+        ("xlink", "http://www.w3.org/1999/xlink"),
+    ):
+        try:
+            ET.register_namespace(prefix, uri)
+        except ValueError:
+            pass
+
+    safe = ET.tostring(root, encoding="utf-8")
+
+    # 3) 二次断言：净化结果不得残留任何可执行特征
+    text = safe.decode("utf-8", errors="ignore").lower()
+    for danger in ("<script", "javascript:", "onload", "onerror", "foreignobject", "<iframe"):
+        if danger in text:
+            raise HTTPException(status_code=400, detail="SVG 含不安全内容，已被拒绝")
+    return safe
 
 
 @router.get("")
@@ -79,6 +259,14 @@ async def upload(
             detail=f"仅支持图片：{', '.join(ALLOWED_MIME)}",
         )
 
+    # SVG 默认禁用：它是 XML，可直接承载脚本
+    if ext == ".svg" and not settings.ALLOW_SVG_UPLOAD:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="SVG 上传已禁用（存在存储型 XSS 风险）；"
+            "确需使用请设置 ALLOW_SVG_UPLOAD=true，系统将强制净化",
+        )
+
     data = await file.read()
     if len(data) > MAX_BYTES:
         raise HTTPException(
@@ -88,13 +276,11 @@ async def upload(
     if not data:
         raise HTTPException(status_code=400, detail="空文件")
 
-    # 2) 魔数二次校验（防伪造 Content-Type）
-    if ext == ".png" and not data.startswith(b"\x89PNG"):
-        raise HTTPException(status_code=400, detail="文件内容与类型不符")
-    if ext == ".jpg" and not data.startswith(b"\xff\xd8\xff"):
-        raise HTTPException(status_code=400, detail="文件内容与类型不符")
-    if ext == ".gif" and data[:6] not in (b"GIF87a", b"GIF89a"):
-        raise HTTPException(status_code=400, detail="文件内容与类型不符")
+    # 2) 内容真校验：SVG 走 XML 净化，其余位图走 Pillow 解码 + 格式比对
+    if ext == ".svg":
+        data = _sanitize_svg(data)
+    else:
+        _verify_image_content(data, ext)
 
     # 3) 随机文件名，避免路径穿越与覆盖
     root = Path(settings.MEDIA_ROOT)

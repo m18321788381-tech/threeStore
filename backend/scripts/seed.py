@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import func, select, text  # noqa: E402
 
+from app.core.config import settings  # noqa: E402
 from app.core.enums import PostStatus  # noqa: E402
 from app.db.session import SessionLocal  # noqa: E402
 from app.models.category import Category  # noqa: E402
@@ -380,5 +381,21 @@ async def seed(force: bool = False) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="清空并重建种子数据")
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="跳过确认（仅在你明确知道要在生产环境灌示例数据时使用）",
+    )
     args = parser.parse_args()
+
+    # 种子数据会写入示例文章与评论，误在生产执行会污染真实内容，这里加一道确认。
+    if settings.APP_ENV == "production" and not args.yes:
+        answer = input(
+            "⚠️  当前 APP_ENV=production，执行本脚本会向生产库写入示例数据。\n"
+            "   确认继续请输入 yes："
+        )
+        if answer.strip().lower() != "yes":
+            print("已取消。若为验证环境，请设置 APP_ENV=development。")
+            raise SystemExit(0)
+
     asyncio.run(seed(force=args.force))

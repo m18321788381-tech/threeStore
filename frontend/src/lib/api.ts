@@ -63,6 +63,9 @@ function unwrap<T>(payload: unknown): T | null {
 /**
  * Server Component 专用。**失败返回 null 而不抛错** —— 保证后端未就绪时
  * `next build` 仍能完成预渲染，线上运行时再拿到真实数据。
+ *
+ * `token` 用于服务端鉴权守卫：Server Component 读不到 localStorage，
+ * 因此登录态同时会写入 cookie（见 setAuthToken），这里带上它去后端校验。
  */
 export async function serverGet<T>(
   path: string,
@@ -70,13 +73,17 @@ export async function serverGet<T>(
     params?: Record<string, string | number | undefined | null>;
     revalidate?: number;
     tags?: string[];
+    token?: string;
   } = {}
 ): Promise<T | null> {
-  const { params, revalidate = 60, tags } = options;
+  const { params, revalidate = 60, tags, token } = options;
   try {
     const res = await fetch(buildUrl(INTERNAL_API, `${API_PREFIX}${path}`, params), {
       next: { revalidate, tags },
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     if (!res.ok) return null;
     return unwrap<T>(await res.json());
@@ -93,8 +100,18 @@ export function authToken(): string | null {
 
 export function setAuthToken(token: string | null) {
   if (typeof window === "undefined") return;
-  if (token) window.localStorage.setItem("blog_token", token);
-  else window.localStorage.removeItem("blog_token");
+
+  if (token) {
+    window.localStorage.setItem("blog_token", token);
+    // 同步写入 cookie：Server Component 读不到 localStorage，
+    // 后台布局的服务端守卫依赖它来判断登录态。
+    // 注意：未启用 HTTPS 时不能加 Secure，否则浏览器会丢弃该 cookie；
+    // 站点切到 HTTPS 后应补上 `; secure`。
+    document.cookie = `blog_token=${token}; path=/; max-age=43200; samesite=lax`;
+  } else {
+    window.localStorage.removeItem("blog_token");
+    document.cookie = "blog_token=; path=/; max-age=0; samesite=lax";
+  }
 }
 
 async function request<T>(

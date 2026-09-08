@@ -3,10 +3,11 @@ FROM nginx:1.27-alpine
 # apk 源主机名，国内云主机建议用镜像站（留空则回退官方源），如腾讯云内网 mirrors.tencentyun.com
 ARG APK_MIRROR_HOST=mirrors.cloud.tencent.com
 
-# 创建证书校验目录，并准备媒体目录
-RUN mkdir -p /var/www/certbot /usr/share/nginx/html/media
+# 创建证书校验目录、媒体目录与安全头片段目录
+RUN mkdir -p /var/www/certbot /usr/share/nginx/html/media /etc/nginx/snippets
 
 COPY default.conf /etc/nginx/conf.d/default.conf
+COPY snippets/security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 # 健康检查需要 curl（官方 alpine 镜像默认不带）
 RUN if [ -n "$APK_MIRROR_HOST" ]; then \

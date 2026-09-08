@@ -4,14 +4,18 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.db.session import get_db
+from app.services.seo import get_feed, get_sitemap
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -78,9 +82,43 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+    # SEO 根路径兜底：约定俗成的 /feed.xml、/sitemap.xml 也应可访问。
+    # 应用路由实际挂在 /api/v1 下，此前 Nginx 精确匹配转发到无前缀路径导致 404，
+    # 这里在根路径再挂一份，无论 Nginx 是否配置正确都不会失效。
+    @app.get("/feed.xml", include_in_schema=False)
+    async def feed_root(session: AsyncSession = Depends(get_db)):
+        return Response(
+            content=await get_feed(session),
+            media_type="application/rss+xml; charset=utf-8",
+        )
+
+    @app.get("/sitemap.xml", include_in_schema=False)
+    async def sitemap_root(session: AsyncSession = Depends(get_db)):
+        return Response(
+            content=await get_sitemap(session), media_type="application/xml"
+        )
+
     @app.get("/health", tags=["meta"], summary="健康检查（Docker healthcheck）")
     async def root_health():
         return {"code": 0, "data": {"status": "ok"}, "message": "success"}
+
+    # 存活探针：不查数据库，仅证明进程活着，供 K8s liveness 使用
+    @app.get("/healthz", tags=["meta"], summary="存活探针（不依赖数据库）")
+    async def liveness():
+        return {"status": "ok"}
+
+    # 就绪探针：查一次数据库，失败即 503，供负载均衡剔除流量
+    @app.get("/readyz", tags=["meta"], summary="就绪探针（含数据库连通性）")
+    async def readiness(session: AsyncSession = Depends(get_db)):
+        try:
+            await session.execute(text("SELECT 1"))
+        except Exception as exc:  # pragma: no cover
+            logger.error("就绪检查失败：%s", exc)
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unavailable", "reason": "database unreachable"},
+            )
+        return {"status": "ok", "database": "up"}
 
     return app
 

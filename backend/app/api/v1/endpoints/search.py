@@ -18,14 +18,25 @@ router = APIRouter(tags=["search"])
 
 @router.get("/search")
 async def search(
-    q: str = Query(..., min_length=1, max_length=100),
+    q: str = Query("", max_length=100),
     page_params: Pagination = Depends(pagination_params),
     session: AsyncSession = Depends(get_db),
 ):
-    keyword = f"%{q.strip()}%"
+    # 空关键词返回空结果集而非 422：前端搜索页直接以 /search 进入时不应报错，
+    # 也方便第三方调用方无条件传参。
+    keyword = q.strip()
+    if not keyword:
+        return ok(
+            {
+                "keyword": "",
+                **paginate([], 0, page_params.page, page_params.page_size),
+            }
+        )
+
+    like = f"%{keyword}%"
     where = (
         Post.status == PostStatus.PUBLISHED,
-        or_(Post.title.ilike(keyword), Post.content_md.ilike(keyword), Post.summary.ilike(keyword)),
+        or_(Post.title.ilike(like), Post.content_md.ilike(like), Post.summary.ilike(like)),
     )
 
     total = (
@@ -50,7 +61,7 @@ async def search(
     items = [post_list_item(p) for p in rows]
     return ok(
         {
-            "keyword": q,
+            "keyword": keyword,
             **paginate(items, total, page_params.page, page_params.page_size),
         }
     )
