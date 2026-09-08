@@ -82,8 +82,17 @@ boke/
 
 ### 方式一：Docker 生产编排（推荐）
 
+> ⚠️ **安全前置（必做）**：`APP_ENV=production` 时后端会在启动前校验安全基线，
+> 任一项不合规将**直接拒绝启动**：
+> - `SECRET_KEY` / `JWT_SECRET` 必须是 `openssl rand -hex 32` 生成的高熵值，且互不相同
+> - `ADMIN_PASSWORD` 必须 ≥ 12 位强口令（默认 `admin12345` 会被拒绝）
+> - `SITE_URL` 必须是真实访问地址（`localhost` 会让 RSS / Sitemap / OG 全部失效）
+>
+> 该校验源自一次真实事故：默认口令与默认 JWT 密钥直接上生产，导致后台可被任意接管。
+
 ```bash
 cp .env.example .env          # 按部署环境修改密钥与站点信息
+openssl rand -hex 32          # 生成 SECRET_KEY（再跑一次生成不同的 JWT_SECRET）
 docker compose up -d --build  # 构建并启动 4 个服务
 ```
 
@@ -140,12 +149,17 @@ docker compose exec backend python scripts/init_admin.py
 
 | 变量 | 说明 | 默认 |
 |---|---|---|
-| `SECRET_KEY` / `JWT_SECRET` | 应用与 JWT 密钥 | 占位，生产必改 |
+| `SECRET_KEY` / `JWT_SECRET` | 应用与 JWT 密钥，**生产必改且不得相同** | 占位（生产模式下留空将拒绝启动） |
 | `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME` | PostgreSQL 连接 | `db` / 5432 / `blog` |
 | `SITE_URL/TITLE/DESCRIPTION/AUTHOR` | 站点元信息（RSS/OG/Sitemap） | 见 `.env.example` |
-| `COMMENT_*` | 反垃圾评论阈值 | 见 `config.py` |
-| `ADMIN_*` | 引导管理员账号 | `admin` |
+| `COMMENT_RATE_LIMIT` / `COMMENT_RATE_WINDOW` | 反垃圾评论阈值 | `10` 条 / `600` 秒 |
+| `LOGIN_FAIL_LIMIT` / `LOGIN_FAIL_WINDOW` / `LOGIN_LOCK_SECONDS` | 登录失败次数、统计窗口、锁定时长 | `5` 次 / `900` 秒 / `900` 秒 |
+| `LOGIN_FAIL_LIMIT_PER_ACCOUNT` | 同一 IP + 账号维度的失败上限 | `5` |
+| `LOGIN_GLOBAL_LIMIT` / `LOGIN_GLOBAL_WINDOW` | 同一 IP 总尝试次数与其窗口 | `30` / `900` 秒 |
+| `ALLOW_SVG_UPLOAD` | 是否允许上传 SVG（有存储型 XSS 风险，开启后强制净化） | `false` |
+| `ADMIN_*` | 引导管理员账号 | `admin`（口令留空，生产必填） |
 | `HTTP_PORT/HTTPS_PORT/POSTGRES_DATA` | 暴露端口与数据卷名 | 80 / 443 / `blog_pgdata` |
+| `BACKUP_DIR` / `BACKUP_KEEP_DAYS` | 备份目录与保留天数 | `./backups` / `14` |
 | `APT_MIRROR_HOST/APK_MIRROR_HOST/PIP_INDEX_URL/NPM_REGISTRY` | 构建加速镜像源 | `mirrors.cloud.tencent.com` 系列 |
 
 ---
@@ -190,14 +204,36 @@ docker compose -f docker-compose.yml -f docker-compose.redis.yml --env-file .env
 
 ## 校验状态
 
-- 后端：`app.main` 导入干净，41 条路由全部注册；`requirements.txt` 依赖可安装。
-  > 注：本机无 Docker / 本地 PostgreSQL，未能实跑迁移与端到端接口；容器启动需在有 Docker 的环境验证。
+- 后端：`app.main` 导入干净，**47 条路由**全部注册；`requirements.txt` 依赖可安装。
+- 测试：`backend/tests/` 共 **16 条安全回归用例全部通过**（`make test`），覆盖默认凭据拦截、
+  限流计数、SVG 净化、polyglot 图片拦截。
 - 前端：`tsc --noEmit` 通过；`next build` 已可产出 standalone 产物。
-- 容器：Compose / Dockerfile / Nginx 配置齐备，但未经本机容器化启动验证。
+- CI：`.github/workflows/ci.yml` 在 PR 阶段执行后端 ruff + 导入冒烟 + 测试、前端 typecheck + build。
+- 安全：生产环境安全基线 fail-fast 已生效（实测可拦截默认密钥 / 弱口令 / localhost SITE_URL）。
+- 未验证项：本机无 Docker，容器化端到端（迁移、登录、发文、评论、OG、花园图谱）仍需在服务器验证。
+
+## 常用命令
+
+```bash
+make up        # 构建并启动
+make down      # 停止（保留数据卷）
+make logs      # 看日志
+make init-admin# 初始化/重置管理员
+make seed      # 灌入示例数据（生产环境需二次确认）
+make backup    # 备份数据库与媒体文件
+make restore f=backups/blog_xxx.sql.gz  # 恢复（供演练）
+make test      # 运行后端安全回归测试
+make verify    # 上线前自检：类型检查 + 测试
+make clean     # 停止并清空数据（危险）
+```
 
 ## 后续建议
 
-1. 在含 Docker 的机器上 `make up` 跑通端到端，验证迁移、登录、发文、评论、OG、花园图谱。
-2. 接入 redis 做限流/缓存（替换 `rate_limit.py` 的内存实现）。
-3. 配置 HTTPS（参考 `nginx/ssl.conf.example` + Let's Encrypt）。
+1. **配置 HTTPS**（当前唯一遗留的高危项）：参考 `nginx/ssl.conf.example` + Let's Encrypt；
+   启用后需补两处——在 `nginx/snippets/security-headers.conf` 中启用 HSTS、
+   在 `lib/api.ts` 的 cookie 写入处补 `; secure`。
+2. 在服务器上跑通端到端回归：迁移、登录、发文、评论、OG、花园图谱。
+3. 启用 Redis（`docker-compose.redis.yml`）：未配置时限流降级为内存实现，
+   多副本部署会导致登录锁定与评论限流各副本各算各的。
 4. 接入对象存储（S3/OSS）替换本地 media 卷，便于横向扩展。
+5. 配置 `crontab` 周期执行 `make backup`，并**定期做恢复演练**验证备份可用。
