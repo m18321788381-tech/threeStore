@@ -20,6 +20,8 @@ bcrypt==4.2.1
 
 # ---- Markdown / Rendering ----
 markdown-it-py==3.0.0
+# gfm-like 预设会开启 linkify；缺这个包时渲染直接抛 ModuleNotFoundError
+linkify-it-py==2.0.3
 mdit-py-plugins==0.4.2
 pygments==2.18.0
 bleach[css]==6.2.0

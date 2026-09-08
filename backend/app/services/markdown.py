@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import html
+import logging
 import re
 from dataclasses import dataclass, field
 
@@ -23,11 +24,26 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.lexers.special import TextLexer
 from pygments.util import ClassNotFound
 
+logger = logging.getLogger(__name__)
+
+# gfm-like 预设默认 linkify=True；缺 linkify-it-py 时 markdown-it 会在渲染正文
+# 第一个行内 token 时抛 ModuleNotFoundError，导致发文接口 500。缺包就只降级为
+# 「裸 URL 不自动转链接」，不阻塞保存。
+try:
+    import linkify_it  # noqa: F401
+
+    _HAS_LINKIFY = True
+except ImportError:  # pragma: no cover - 取决于部署环境
+    _HAS_LINKIFY = False
+    logger.warning("未安装 linkify-it-py，正文中的裸 URL 不会自动转换为链接")
+
 # ------------------------------------------------------------------ 常量 ---
 WIKI_LINK_RE = re.compile(r"\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]")
 HEADING_RE = re.compile(r"<h([1-6])>(.*?)</h\1>", re.S)
 TAG_RE = re.compile(r"<[^>]+>")
-PLACEHOLDER_FMT = "%%WIKILINK%d%%"
+# 注意：必须用 str.format 占位；写成 "%%WIKILINK%d%%" % i 会把 %% 折叠成单个 %，
+# 导致 PLACEHOLDER_RE 永不匹配、[[链接]] 以原始占位符形式泄漏到正文里。
+PLACEHOLDER_FMT = "%%WIKILINK{idx}%%"
 PLACEHOLDER_RE = re.compile(r"%%WIKILINK(\d+)%%")
 
 ALLOWED_TAGS = [
@@ -82,7 +98,10 @@ def _highlight_code(code: str, lang: str, attrs: str) -> str:
 
 def _build_parser() -> MarkdownIt:
     md = (
-        MarkdownIt("gfm-like", {"highlight": _highlight_code, "html": False})
+        MarkdownIt(
+            "gfm-like",
+            {"highlight": _highlight_code, "html": False, "linkify": _HAS_LINKIFY},
+        )
         .enable(["table", "strikethrough"])
         .use(tasklists_plugin, enabled=True, label=True, label_after=False)
         .use(footnote_plugin)
@@ -161,7 +180,7 @@ def render_markdown(
             text = (m.group(2) or m.group(1)).strip()
             slug = wiki_resolver(target) if wiki_resolver else None
             resolved.append((text, target, slug))
-            return PLACEHOLDER_FMT % idx
+            return PLACEHOLDER_FMT.format(idx=idx)
 
         source = WIKI_LINK_RE.sub(_to_placeholder, source)
 

@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -214,7 +214,7 @@ async def get_post(slug: str, session: AsyncSession = Depends(get_db)):
             post,
             toc=_parse_toc(post.toc),
             prev=_ref(prev_row),
-            next=_ref(next_row),
+            next_=_ref(next_row),
             comment_count=comment_count,
         )
     )
@@ -243,6 +243,11 @@ async def increase_view(slug: str, session: AsyncSession = Depends(get_db)):
 
 # ------------------------------------------------------------------ 管理 ---
 async def _assign_tags(session: AsyncSession, post: Post, tag_ids: list[str] | None):
+    """整体替换文章的标签集合。
+
+    AsyncSession 下给「未载入」的关系集合赋值会先懒加载旧值并抛 MissingGreenlet：
+    pending（尚未 flush）的新文章直接赋值即可；已入库且集合未载入的先显式异步载入。
+    """
     if tag_ids is None:
         return
     ids = []
@@ -259,6 +264,8 @@ async def _assign_tags(session: AsyncSession, post: Post, tag_ids: list[str] | N
         if ids
         else []
     )
+    if inspect(post).persistent and "tags" not in post.__dict__:
+        await session.refresh(post, attribute_names=["tags"])
     post.tags = tags
 
 
@@ -296,7 +303,7 @@ async def create_post(
         post.published_at = datetime.now(tz=timezone.utc)
 
     session.add(post)
-    await session.flush()
+    # 标签在 flush 之前挂载：pending 态赋值不触发懒加载
     await _assign_tags(session, post, payload.tag_ids)
     await session.flush()
     await _render_and_sync(session, post)

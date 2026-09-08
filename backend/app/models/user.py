@@ -24,8 +24,10 @@ class User(UUIDPkMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # noload：没有任何读取方，但 selectin 会让「每次鉴权 session.get(User)」都把该作者
+    # 的全部文章（连带 tags）捞出来，鉴权开销随文章数线性增长。
     posts: Mapped[list["Post"]] = relationship(  # noqa: F821
-        back_populates="author", lazy="selectin"
+        back_populates="author", lazy="noload"
     )
 
     @property
