@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { copyToClipboard } from "@/lib/utils";
 
 /**
  * 正文容器。
@@ -45,12 +46,10 @@ export function PostContent({ html }: { html: string }) {
       btn.className = "code-block__copy";
       btn.textContent = "复制";
       btn.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(code?.textContent || "");
-          btn.textContent = "已复制";
-        } catch {
-          btn.textContent = "复制失败";
-        }
+        // 复用带降级的复制工具：navigator.clipboard 仅在 HTTPS / localhost 可用，
+        // HTTP 站点下需走临时 textarea 兜底，否则技术博客最常用的一键复制会失效
+        const ok = await copyToClipboard(code?.textContent || "");
+        btn.textContent = ok ? "已复制" : "复制失败";
         setTimeout(() => {
           btn.textContent = "复制";
         }, 1500);
