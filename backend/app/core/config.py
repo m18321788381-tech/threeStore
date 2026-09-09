@@ -95,7 +95,10 @@ class Settings(BaseSettings):
 
     # ---------- Pagination ----------
     DEFAULT_PAGE_SIZE: int = 10
-    MAX_PAGE_SIZE: int = 50
+    # 上限需要覆盖「后台下拉要拿全量文章标题做 [[双向链接]] 提示」的场景
+    # （见 frontend/src/components/editor/PostEditor.tsx 的 page_size=200）。
+    # 200 条对带索引的分页查询无压力，且仍是有界值，不会被用来打满数据库。
+    MAX_PAGE_SIZE: int = 200
 
     # ---------- Admin bootstrap ----------
     ADMIN_USERNAME: str = "admin"
