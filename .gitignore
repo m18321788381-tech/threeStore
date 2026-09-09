@@ -23,7 +23,10 @@ venv/
 *.log
 
 # ===== 运行时数据 =====
-media/
+# 媒体数据卷挂载点。本地开发若有 `backend/media/` 用于兜底，亦在 .gitignore 中。
+# 注意：必须用锚定到仓库根的 `/media/`，否则会误伤任意名为 media 的子目录
+# （如 `frontend/src/app/admin/(panel)/media/page.tsx`，会导致后台媒体页 404）。
+/media/
 backend/media/
 *.sqlite3
 *.db

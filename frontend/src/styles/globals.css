@@ -430,6 +430,33 @@
   border-radius: 12px;
   margin-inline: auto;
 }
+/* 灯箱：medium-zoom 的样式表只有 4 条规则，直接内联以避免多一个 CSS 请求，
+   并把遮罩色改成跟随主题的深色，浅色/暗色下都不会刺眼 */
+.medium-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  will-change: opacity;
+  z-index: 90;
+}
+.medium-zoom--opened .medium-zoom-overlay {
+  cursor: zoom-out;
+  opacity: 1;
+}
+.medium-zoom-image {
+  cursor: zoom-in;
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1) !important;
+}
+.medium-zoom-image--hidden {
+  visibility: hidden;
+}
+.medium-zoom-image--opened {
+  position: relative;
+  z-index: 91;
+  cursor: zoom-out;
+  will-change: transform;
+}
 .prose-blog hr {
   border-color: var(--border);
   margin-block: 2.4em;
@@ -612,6 +639,43 @@
 .wiki-link__plus {
   margin-left: 2px;
   opacity: 0.7;
+}
+
+/* ------------------------------------------------------------ 阅读进度条 */
+/* 默认走 CSS scroll-driven animations：由合成器驱动，不占主线程，长文滚动零抖动；
+   不支持的老浏览器由 JS 降级写入 transform（组件内检测） */
+.reading-progress {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  height: 2px;
+  z-index: 80;
+  pointer-events: none;
+}
+.reading-progress__bar {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  /* color-mix 不支持时上一行兜底，进度条不至于变透明 */
+  background: var(--accent);
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 60%, var(--info))
+  );
+}
+.reading-progress__bar[data-mode="css"] {
+  animation: reading-progress-grow 1ms linear;
+  animation-timeline: scroll(root block);
+}
+@keyframes reading-progress-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* ------------------------------------------------------------ 终端彩蛋样式 */

@@ -3,7 +3,7 @@ import { serverGet } from "@/lib/api";
 import { Pagination } from "@/components/common/Pagination";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatDate, readingTimeLabel } from "@/lib/utils";
-import type { Paginated, PostListItem } from "@/types";
+import type { Paginated, PostSearchItem } from "@/types";
 
 /** 顶部常驻搜索框：用原生 GET 表单，无 JS 也能用。 */
 export function SearchBox({ defaultQuery }: { defaultQuery: string }) {
@@ -36,7 +36,7 @@ export async function SearchResults({ q, page }: { q: string; page: number }) {
     );
   }
 
-  const data = await serverGet<Paginated<PostListItem>>("/search", {
+  const data = await serverGet<Paginated<PostSearchItem> & { keyword: string }>("/search", {
     params: { q: query, page, page_size: 10 },
     revalidate: 0,
   });
@@ -92,6 +92,15 @@ export async function SearchResults({ q, page }: { q: string; page: number }) {
               <p className="mt-1.5 line-clamp-2 text-[13.5px] leading-relaxed text-muted">
                 <Highlight text={post.summary} terms={terms} />
               </p>
+            )}
+
+            {post.highlight && (
+              <p
+                // 片段由后端生成：先切段再逐段 HTML 转义，只可能含 <mark>，
+                // 用户输入不可能注入标签，因此可以安全地直接渲染
+                className="mt-2 line-clamp-2 border-l-2 border-border pl-3 text-[13px] leading-relaxed text-muted"
+                dangerouslySetInnerHTML={{ __html: post.highlight }}
+              />
             )}
           </li>
         ))}

@@ -1,0 +1,8 @@
+# 服务器是 Linux：shell 脚本必须保持 LF。
+# Windows 默认 core.autocrlf=true 会把签出文件转成 CRLF，
+# 直接传到服务器上会报 "/bin/bash^M: bad interpreter"。
+*.sh text eol=lf
+
+# 同理，容器里的 nginx / yaml 配置也统一 LF
+*.conf text eol=lf
+*.yml text eol=lf

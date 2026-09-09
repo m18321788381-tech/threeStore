@@ -1,0 +1,15 @@
+# HTTPS 叠加层：仅在已签发证书后启用，把 443 端口暴露出来。
+#
+# 用法（与主 compose 叠加，不要单独使用）：
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d nginx
+#
+# 说明：
+#   * 这里只补 443 端口。Compose 对 ports / volumes 这类多值字段是「追加」语义，
+#     证书卷（./nginx/certs:/etc/nginx/ssl:ro）与 ACME 校验卷已在主文件挂载，
+#     重复声明会导致 duplicate mount 报错，故不在此重写。
+#   * ./nginx/certs 同时被 certbot 容器当作 /etc/letsencrypt 挂载，
+#     certbot 写入 live/<域名>/，nginx 只读同一个目录，无需拷贝证书。
+services:
+  nginx:
+    ports:
+      - "${HTTPS_PORT:-443}:443"

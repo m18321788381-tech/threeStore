@@ -3,6 +3,7 @@ import type {
   Paginated,
   PostDetail,
   PostListItem,
+  PostSearchItem,
   Category,
   Tag,
   ArchiveGroup,
@@ -105,9 +106,11 @@ export function setAuthToken(token: string | null) {
     window.localStorage.setItem("blog_token", token);
     // 同步写入 cookie：Server Component 读不到 localStorage，
     // 后台布局的服务端守卫依赖它来判断登录态。
-    // 注意：未启用 HTTPS 时不能加 Secure，否则浏览器会丢弃该 cookie；
-    // 站点切到 HTTPS 后应补上 `; secure`。
-    document.cookie = `blog_token=${token}; path=/; max-age=43200; samesite=lax`;
+    // Secure 只在 HTTPS 下加：HTTP 站点加 Secure 浏览器会直接丢弃该 cookie，
+    // 表现为「登录成功但一进后台就被踢回登录页」。
+    const secure =
+      typeof location !== "undefined" && location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `blog_token=${token}; path=/; max-age=43200; samesite=lax${secure}`;
   } else {
     window.localStorage.removeItem("blog_token");
     document.cookie = "blog_token=; path=/; max-age=0; samesite=lax";
@@ -175,7 +178,7 @@ export const api = {
 
   /* 搜索 */
   search: (q: string, page = 1, page_size = 10) =>
-    request<Paginated<PostListItem> & { keyword: string }>("GET", "/search", undefined, {
+    request<Paginated<PostSearchItem> & { keyword: string }>("GET", "/search", undefined, {
       q,
       page,
       page_size,

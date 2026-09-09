@@ -5,6 +5,7 @@ import { serverGet } from "@/lib/api";
 import { siteConfig } from "@/lib/site";
 import { formatDate, readingTimeLabel } from "@/lib/utils";
 import { PostContent } from "@/components/post/PostContent";
+import { ReadingProgress } from "@/components/post/ReadingProgress";
 import { PostPager } from "@/components/post/PostPager";
 import { ViewCounter } from "@/components/post/ViewCounter";
 import { TOC } from "@/components/post/TOC";
@@ -85,6 +86,7 @@ export default async function PostPage({ params }: Props) {
 
   return (
     <div className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <ReadingProgress />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

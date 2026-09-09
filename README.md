@@ -65,8 +65,10 @@ boke/
 │   ├── src/lib/             # api / utils / site
 │   ├── src/styles/          # globals.css / pygments.css
 │   └── Dockerfile
-├── nginx/                   # default.conf / ssl.conf.example / Dockerfile
+├── nginx/                   # default.conf / ssl.conf.template / Dockerfile
+├── scripts/                 # backup / restore / enable-https / renew-certs
 ├── docker-compose.yml       # 生产编排（nginx+frontend+backend+db）
+├── docker-compose.https.yml # HTTPS 叠加层（443 端口，配合 enable-https.sh 使用）
 ├── docker-compose.dev.yml   # 开发编排（db+backend 热重载）
 ├── Makefile
 └── .env.example
@@ -229,9 +231,16 @@ make clean     # 停止并清空数据（危险）
 
 ## 后续建议
 
-1. **配置 HTTPS**（当前唯一遗留的高危项）：参考 `nginx/ssl.conf.example` + Let's Encrypt；
-   启用后需补两处——在 `nginx/snippets/security-headers.conf` 中启用 HSTS、
-   在 `lib/api.ts` 的 cookie 写入处补 `; secure`。
+1. **配置 HTTPS**：
+   ```bash
+   ./scripts/enable-https.sh blog.example.com you@example.com --staging --www  # 先演练
+   ./scripts/enable-https.sh blog.example.com you@example.com --www            # 再签正式
+   ```
+   脚本会自动签发证书、渲染 `nginx/default.conf` 并叠加 `docker-compose.https.yml`
+   暴露 443；HSTS 默认不开，稳定运行后用 `--hsts` 重跑一次即可。
+   启用后记得把 `.env` 的 `SITE_URL` 改成 `https://…` 并重建前端，
+   并用 `scripts/renew-certs.sh` 配一条 crontab 做自动续期。
+   （cookie 的 `; secure` 已按协议自动判断，无需再改代码。）
 2. 在服务器上跑通端到端回归：迁移、登录、发文、评论、OG、花园图谱。
 3. 启用 Redis（`docker-compose.redis.yml`）：未配置时限流降级为内存实现，
    多副本部署会导致登录锁定与评论限流各副本各算各的。

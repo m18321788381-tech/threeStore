@@ -1,0 +1,129 @@
+# 生产 HTTPS 配置模板（由 scripts/enable-https.sh 渲染成 nginx/default.conf）
+#
+# 占位符 {{DOMAIN}} 会被替换成真实域名。刻意不用 envsubst：
+# envsubst 会把 nginx 的 $host / $scheme 之类的变量一并吃掉。
+
+upstream frontend_upstream { server frontend:3000; }
+upstream backend_upstream { server backend:8000; }
+
+# ---------------------------- HTTP :80 ----------------------------
+# 只保留 ACME 校验，其余全部 301 到 HTTPS。
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{DOMAIN}};
+
+    include /etc/nginx/snippets/security-headers.conf;
+
+    # Let's Encrypt HTTP-01 校验目录
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---------------------------- HTTPS :443 ----------------------------
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name {{DOMAIN}};
+
+    ssl_certificate     /etc/nginx/ssl/live/{{DOMAIN}}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/live/{{DOMAIN}}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # 安全响应头。HSTS 默认注释：一旦下发，max-age 期间无法撤回，
+    # 建议 HTTPS 稳定运行一段时间后再用 `scripts/enable-https.sh --hsts` 打开。
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    client_max_body_size 20m;
+
+    # ---- 压缩 ----
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_types
+        text/plain text/css text/xml application/json
+        application/javascript application/xml+rss
+        image/svg+xml application/atom+xml;
+
+    # ---- 媒体文件：长缓存 + 沙箱 CSP ----
+    # 用户上传目录风险高于站点自身资源：即便存在可携带脚本的 SVG，
+    # 也会被 CSP sandbox 拦在站点上下文之外。
+    location /media/ {
+        alias /var/www/media/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        add_header Content-Security-Policy "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+        try_files $uri =404;
+    }
+
+    # ---- 后端 API ----
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass http://backend_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # ---- SEO：RSS / Sitemap（后端挂在 /api/v1 下，转发路径必须带前缀）----
+    location = /feed.xml {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass http://backend_upstream/api/v1/feed.xml;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /sitemap.xml {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass http://backend_upstream/api/v1/sitemap.xml;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ---- Next.js 静态资源：长缓存 ----
+    location /_next/static/ {
+        proxy_pass http://frontend_upstream;
+        proxy_set_header Host $host;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    # ---- 其余全部交给前端 ----
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass http://frontend_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}

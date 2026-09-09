@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { Skeleton } from "@/components/common/Skeleton";
 import { cn } from "@/lib/utils";
+import {
+  clearDraft,
+  clockLabel,
+  draftAgeLabel,
+  draftKey,
+  readDraft,
+  sameDraft,
+  writeDraft,
+  type DraftForm,
+  type DraftSnapshot,
+} from "@/lib/draft";
 import type { Category, PostDetail, Tag } from "@/types";
 
 export function PostEditor({ postId }: { postId?: string }) {
@@ -23,6 +34,24 @@ export function PostEditor({ postId }: { postId?: string }) {
   const [status, setStatus] = useState(0);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
+
+  // ---- 本地草稿（防丢稿）----
+  const key = draftKey(postId);
+  const [pendingDraft, setPendingDraft] = useState<DraftSnapshot | null>(null);
+  const [autosavedAt, setAutosavedAt] = useState<number | null>(null);
+  const draftCheckedKey = useRef<string | null>(null);
+  const lastSavedRef = useRef(0);
+
+  const currentForm = (): DraftForm => ({
+    title,
+    slug,
+    summary,
+    cover_url: coverUrl,
+    content_md: content,
+    category_id: categoryId,
+    tag_ids: tagIds,
+    status,
+  });
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
@@ -52,6 +81,88 @@ export function PostEditor({ postId }: { postId?: string }) {
     setStatus(existing.status ?? 0);
   }, [existing]);
 
+  // 服务端内容就绪后核对本地草稿：只有在确实比服务端内容「新」时才提示恢复，
+  // 否则把误写入的快照悄悄清掉，避免每次进编辑页都弹同一个提示。
+  useEffect(() => {
+    if (postId && isLoading) return;
+    // 按 draftKey 去重：新建保存后 URL 会 replace 成 /edit，
+    // 此时组件可能复用，必须允许用新的 key 重新检查一次
+    if (draftCheckedKey.current === key) return;
+    draftCheckedKey.current = key;
+    lastSavedRef.current = 0;
+
+    const draft = readDraft(key);
+    if (!draft) return;
+
+    const server: DraftForm = {
+      title: existing?.title ?? "",
+      slug: existing?.slug ?? "",
+      summary: existing?.summary ?? "",
+      cover_url: existing?.cover_url ?? "",
+      content_md: existing?.content_md ?? "",
+      category_id: existing?.category?.id ?? "",
+      tag_ids: (existing?.tags || []).map((t) => t.id),
+      status: existing?.status ?? 0,
+    };
+
+    if (sameDraft(draft, server)) {
+      clearDraft(key);
+      return;
+    }
+    setPendingDraft(draft);
+  }, [postId, isLoading, existing, key]);
+
+  // 自动快照：变更 1.5s 防抖；若距上次落盘已超过 30s 则立即写，
+  // 保证连续打字场景下最坏也只丢 30 秒内容。
+  useEffect(() => {
+    if (postId && isLoading) return; // 服务端内容还没到，别把空表单写进去
+    if (pendingDraft) return; // 恢复提示未处理前，不能覆盖用户尚未选择的快照
+    if (!title.trim() && !content.trim()) return; // 空表单不产生垃圾快照
+
+    const wait = Date.now() - lastSavedRef.current > 30_000 ? 0 : 1500;
+    const timer = setTimeout(() => {
+      if (writeDraft(key, currentForm())) {
+        lastSavedRef.current = Date.now();
+        setAutosavedAt(lastSavedRef.current);
+      }
+    }, wait);
+    return () => clearTimeout(timer);
+    // currentForm 依赖全部表单字段，逐项列出以便精确触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    title,
+    slug,
+    summary,
+    coverUrl,
+    content,
+    categoryId,
+    tagIds,
+    status,
+    postId,
+    isLoading,
+    pendingDraft,
+    key,
+  ]);
+
+  const applyDraft = (draft: DraftSnapshot) => {
+    setTitle(draft.title);
+    setSlug(draft.slug);
+    setSummary(draft.summary);
+    setCoverUrl(draft.cover_url);
+    setContent(draft.content_md);
+    setCategoryId(draft.category_id);
+    setTagIds(draft.tag_ids);
+    setStatus(draft.status);
+    setPendingDraft(null);
+    lastSavedRef.current = Date.now();
+    setAutosavedAt(lastSavedRef.current);
+  };
+
+  const discardDraft = () => {
+    clearDraft(key);
+    setPendingDraft(null);
+  };
+
   const save = useMutation({
     mutationFn: async (nextStatus: number) => {
       const payload = {
@@ -70,6 +181,10 @@ export function PostEditor({ postId }: { postId?: string }) {
     onSuccess: (data) => {
       setSaved("已保存");
       setError("");
+      // 已落库：本地快照失去意义，清掉避免下次进入弹出恢复提示
+      clearDraft(key);
+      setAutosavedAt(null);
+      setPendingDraft(null);
       queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
       setTimeout(() => setSaved(""), 2000);
       if (!postId && data?.id) {
@@ -132,6 +247,41 @@ export function PostEditor({ postId }: { postId?: string }) {
           </button>
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-meta text-muted">
+          {autosavedAt ? `草稿已自动保存到本地 · ${clockLabel(autosavedAt)}` : "编辑内容会自动保存到本地"}
+        </p>
+        {autosavedAt && (
+          <button
+            type="button"
+            onClick={() => {
+              clearDraft(key);
+              setAutosavedAt(null);
+            }}
+            className="text-meta text-muted underline decoration-dotted underline-offset-4 hover:text-error"
+          >
+            清除本地草稿
+          </button>
+        )}
+      </div>
+
+      {pendingDraft && (
+        <div className="rounded-btn border border-warning/40 bg-warning/5 px-3 py-3">
+          <p className="text-sm">
+            发现本地未保存草稿（{draftAgeLabel(pendingDraft.saved_at)}）
+            {pendingDraft.title && <>：{pendingDraft.title}</>}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={() => applyDraft(pendingDraft)} className="btn-primary">
+              恢复草稿
+            </button>
+            <button type="button" onClick={discardDraft} className="btn-ghost">
+              丢弃，使用线上内容
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="rounded-btn border border-error/40 bg-error/5 px-3 py-2 text-sm text-error">

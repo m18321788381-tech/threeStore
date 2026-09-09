@@ -43,6 +43,11 @@ export interface PostListItem {
   comment_count: number;
 }
 
+/** 搜索结果项：后端额外返回正文命中片段（已转义，仅含 <mark>） */
+export interface PostSearchItem extends PostListItem {
+  highlight?: string;
+}
+
 export interface TocItem {
   level: number;
   text: string;
