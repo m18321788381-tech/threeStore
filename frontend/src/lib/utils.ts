@@ -56,3 +56,60 @@ export function initials(name: string): string {
   if (!name) return "?";
   return name.trim().slice(0, 1).toUpperCase();
 }
+
+/**
+ * 复制文本到剪贴板，自动降级以兼容 HTTP 站点与旧浏览器。
+ *
+ * **背景**：现代浏览器的 `navigator.clipboard` 仅在安全上下文（HTTPS / localhost）
+ * 下可用。直接调用 `navigator.clipboard.writeText` 在 HTTP 站点上会抛
+ * `TypeError: Cannot read properties of undefined (reading 'writeText')`。
+ *
+ * **降级策略**：
+ * 1. 优先 `navigator.clipboard.writeText`（异步 API，干净）。
+ * 2. 不可用或失败时，使用临时 `<textarea>` + `document.execCommand("copy")`，
+ *    这是 HTTP 站点唯一可行的复制方式（已 deprecated，但浏览器仍兼容）。
+ * 3. 若全部失败，返回 false，由调用方决定是否降级为「弹出输入框供用户手动复制」。
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+
+  // 1) 现代 API：需要安全上下文 + 浏览器支持
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 用户拒绝权限或被策略拦截，落到降级方案
+    }
+  }
+
+  // 2) 兼容降级：临时 textarea + execCommand
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  // 放在屏幕外但仍需可被 select；不能用 display:none
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0";
+  ta.style.left = "-9999px";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  // 选中并复制
+  const selection = document.getSelection();
+  const previousRange =
+    selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  // 恢复原选区
+  document.body.removeChild(ta);
+  if (previousRange && selection) {
+    selection.removeAllRanges();
+    selection.addRange(previousRange);
+  }
+  return ok;
+}

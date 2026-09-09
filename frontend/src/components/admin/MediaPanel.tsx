@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { copyToClipboard } from "@/lib/utils";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Skeleton } from "@/components/common/Skeleton";
 import type { MediaItem, Paginated } from "@/types";
@@ -94,10 +95,17 @@ export function MediaPanel() {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(item.url);
-                      setCopied(item.id);
-                      setTimeout(() => setCopied(""), 1500);
+                    onClick={async () => {
+                      // 使用带降级的复制工具：Clipboard API 仅在 HTTPS / localhost
+                      // 可用，HTTP 站点需要走临时 textarea 兜底
+                      const ok = await copyToClipboard(item.url);
+                      if (ok) {
+                        setError("");
+                        setCopied(item.id);
+                        setTimeout(() => setCopied(""), 1500);
+                      } else {
+                        setError("复制失败，请手动复制链接");
+                      }
                     }}
                     className="row-action text-[11px]"
                   >
