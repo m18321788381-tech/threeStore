@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { serverGet } from "@/lib/api";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { Chip } from "@/components/common/Chip";
 import { EmptyState } from "@/components/common/EmptyState";
 import type { Tag } from "@/types";
@@ -12,6 +13,7 @@ export default async function TagsPage() {
 
   return (
     <div className="mx-auto max-w-content">
+      <Breadcrumb items={[{ name: "标签" }]} />
       <header className="page-head">
         <h1 className="page-title">标签</h1>
         <p className="page-desc">共 {tags?.length ?? 0} 个标签。</p>

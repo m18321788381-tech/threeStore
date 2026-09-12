@@ -24,6 +24,7 @@ from app.models.post import Post
 from app.models.tag import Tag
 from app.schemas import PostCreate, PostUpdate, ok, paginate
 from app.services.links import render_post_content, sync_post_links
+from app.services.redirects import record_slug_change
 from app.services.serializers import post_detail, post_list_item
 from app.services.seo import notify_seo_changed
 from app.services.slug import slugify_title, unique_slug
@@ -96,12 +97,13 @@ async def list_posts(
     if tag:
         query = query.join(Post.tags).where(Tag.slug == tag)
 
-    if sort == "oldest":
-        query = query.order_by(Post.published_at.asc())
-    elif sort == "popular":
-        query = query.order_by(Post.view_count.desc(), Post.published_at.desc())
-    else:
-        query = query.order_by(Post.published_at.desc())
+    # 置顶文章始终最前，其余按所选排序。
+    # 置顶只作用于列表页；归档页与 RSS 保持纯时序，避免「时间线错乱」的观感。
+    secondary = {
+        "oldest": (Post.published_at.asc(),),
+        "popular": (Post.view_count.desc(), Post.published_at.desc()),
+    }.get(sort, (Post.published_at.desc(),))
+    query = query.order_by(Post.is_pinned.desc(), *secondary)
 
     total = (
         await session.execute(select(func.count()).select_from(query.subquery()))
@@ -183,7 +185,7 @@ async def get_post(slug: str, session: AsyncSession = Depends(get_db)):
 
     prev_row = (
         await session.execute(
-            select(Post.slug, Post.title)
+            select(Post.id, Post.slug, Post.title)
             .where(
                 Post.status == PostStatus.PUBLISHED,
                 Post.published_at < published_at,
@@ -194,7 +196,7 @@ async def get_post(slug: str, session: AsyncSession = Depends(get_db)):
     ).first()
     next_row = (
         await session.execute(
-            select(Post.slug, Post.title)
+            select(Post.id, Post.slug, Post.title)
             .where(
                 Post.status == PostStatus.PUBLISHED,
                 Post.published_at > published_at,
@@ -205,9 +207,15 @@ async def get_post(slug: str, session: AsyncSession = Depends(get_db)):
     ).first()
 
     def _ref(row_) -> dict | None:
+        """把 (id, slug, title) 装配成 RefOut。
+
+        历史 bug：此前查询只取 (slug, title)，却把 id 与 slug 都赋成了 row_[0]，
+        导致 `RefOut.id` 实际返回的是 slug。前端一旦用 prev.id 做 key 或跳转就会拿到 slug，
+        故查询补上 Post.id，这里按 (id, slug, title) 三列取值。
+        """
         if not row_:
             return None
-        return {"id": row_[0], "slug": row_[0], "name": row_[1]}
+        return {"id": str(row_[0]), "slug": row_[1], "name": row_[2]}
 
     return ok(
         post_detail(
@@ -296,6 +304,9 @@ async def create_post(
         summary=payload.summary or "",
         content_md=payload.content_md or "",
         cover_url=payload.cover_url or "",
+        canonical_url=(payload.canonical_url or "").strip(),
+        noindex=bool(payload.noindex),
+        is_pinned=bool(payload.is_pinned),
         category_id=_safe_uuid(payload.category_id, "category_id"),
         status=payload.status,
     )
@@ -336,11 +347,20 @@ async def update_post(
             ).first()
             if exists:
                 raise HTTPException(status_code=400, detail="slug 已被占用")
+            # 记下 slug 变更：旧链接由 /redirects/resolve 301 到新地址，
+            # 否则外链与搜索引擎里的旧 URL 会直接 404，已积累的权重白丢。
+            await record_slug_change(session, post.slug, new_slug)
             post.slug = new_slug
     for field in ("summary", "content_md", "cover_url"):
         value = getattr(payload, field)
         if value is not None:
             setattr(post, field, value)
+    if payload.canonical_url is not None:
+        post.canonical_url = payload.canonical_url.strip()
+    if payload.noindex is not None:
+        post.noindex = payload.noindex
+    if payload.is_pinned is not None:
+        post.is_pinned = payload.is_pinned
     if payload.category_id is not None:
         post.category_id = _safe_uuid(payload.category_id, "category_id")
     if payload.tag_ids is not None:

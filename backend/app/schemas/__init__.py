@@ -10,6 +10,7 @@ from app.schemas.misc import (
     GraphOut,
     HealthOut,
     MediaOut,
+    MediaUpdate,
     StatsOverview,
 )
 from app.schemas.post import (
@@ -39,5 +40,5 @@ __all__ = [
     "CategoryCreate", "CategoryUpdate", "CategoryOut",
     "TagCreate", "TagUpdate", "TagOut",
     "CommentCreate", "CommentUpdate", "CommentNode", "CommentAdminItem",
-    "MediaOut", "StatsOverview", "HealthOut", "GraphOut",
+    "MediaOut", "MediaUpdate", "StatsOverview", "HealthOut", "GraphOut",
 ]

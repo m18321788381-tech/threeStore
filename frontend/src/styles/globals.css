@@ -183,6 +183,20 @@
     @apply text-xs font-semibold uppercase tracking-wider text-muted;
   }
 
+  /* 面包屑：粒度比正文更轻，但必须是独立可达的链接（也用于 BreadcrumbList JSON-LD） */
+  .crumb-nav {
+    @apply mb-4 flex flex-wrap items-center gap-1.5 text-xs text-muted;
+  }
+  .crumb-link {
+    @apply transition-colors hover:text-accent;
+  }
+  .crumb-sep {
+    @apply select-none opacity-50;
+  }
+  .crumb-current {
+    @apply min-w-0 truncate font-medium text-foreground;
+  }
+
   /* ---------------------------------------------------------------- 卡片 */
   .card {
     @apply rounded-panel border border-border bg-card shadow-panel transition-colors;

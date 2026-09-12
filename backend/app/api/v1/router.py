@@ -1,6 +1,17 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, comments, links, media, meta, posts, search, stats, taxonomy
+from app.api.v1.endpoints import (
+    auth,
+    comments,
+    links,
+    media,
+    meta,
+    posts,
+    redirects,
+    search,
+    stats,
+    taxonomy,
+)
 
 api_router = APIRouter()
 api_router.include_router(meta.router)
@@ -17,5 +28,7 @@ api_router.include_router(search.router)
 api_router.include_router(stats.router)
 api_router.include_router(links.post_links_router)
 api_router.include_router(links.garden_router)
+# 独立前缀 /redirects，与 /posts/{slug} 无任何路径重叠，不存在注册顺序问题
+api_router.include_router(redirects.router)
 
 __all__ = ["api_router"]

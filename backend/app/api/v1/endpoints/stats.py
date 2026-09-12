@@ -36,6 +36,10 @@ async def overview(
         await session.execute(select(func.coalesce(func.sum(Post.view_count), 0)))
     ).scalar_one()
 
+    # 历史问题：此处曾返回 `views_last_7d`，取值直接复用了 total_views，
+    # 即把一个累计量当成「近 7 日增量」对外输出——前端一旦采用就是展示假数据。
+    # 现已移除。真正的 7 日趋势需要访问事件表（按日聚合），
+    # 属于第二期 PageView 的范畴；在那之前宁可不出这个字段，也不出假数字。
     return ok(
         {
             "post_count": await _count(Post),
@@ -50,7 +54,6 @@ async def overview(
             "media_count": await _count(Media),
             "link_count": await _count(PostLink),
             "total_views": int(total_views or 0),
-            "views_last_7d": int(total_views or 0),  # 详见下方说明
         }
     )
 

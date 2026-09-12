@@ -7,9 +7,16 @@
    剔除 script / foreignObject / 事件属性 / 外部引用，并做二次断言。
 3. **随机文件名**：杜绝路径穿越与覆盖。
 4. **响应侧加固**：由 Nginx 为 /media/ 下发 `nosniff` 与沙箱 CSP（见 nginx/default.conf）。
+
+元数据完整性（2026-09-11 修复）：
+   width / height 列早已存在却从未被写入，恒为 0 —— 前端无法输出尺寸属性，
+   图片加载不预留占位空间，直接产生 CLS（布局偏移）。现在于解码时顺手采集
+   （`Image.open` 已经打开过一次，取 `img.size` 零额外成本）。
+   content_hash 用于同图不重复落盘；物理文件的生命周期由删除端的引用计数守卫负责。
 """
 from __future__ import annotations
 
+import hashlib
 import io
 import re
 import uuid
@@ -19,6 +26,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     Query,
     UploadFile,
@@ -31,7 +39,7 @@ from app.api.deps import get_current_admin
 from app.core.config import settings
 from app.db.session import get_db
 from app.models.media import Media
-from app.schemas import ok, paginate
+from app.schemas import MediaUpdate, ok, paginate
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -102,20 +110,25 @@ def _verify_magic(data: bytes, ext: str) -> None:
         raise HTTPException(status_code=400, detail="文件内容与类型不符")
 
 
-def _verify_image_content(data: bytes, ext: str) -> None:
-    """位图真校验：Pillow 解码 + 解码格式比对。
+def _verify_image_content(data: bytes, ext: str) -> tuple[int, int]:
+    """位图真校验：Pillow 解码 + 解码格式比对，返回 (width, height)。
 
     只比对文件头会被 polyglot（合法头 + 恶意载荷）绕过，
     因此这里要求整个文件能被完整解码，且解码出的格式与声明一致。
+
+    尺寸顺手取自同一个 Image 对象：`img.size` 在 `Image.open` 阶段就由插件解析好了，
+    不需要重复解码。拿不到时返回 (0, 0)（例如 AVIF 缺少解码器）。
     """
     try:
         from PIL import Image  # 延迟导入：未安装时退化为文件头校验
     except ImportError:  # pragma: no cover
         _verify_magic(data, ext)
-        return
+        return (0, 0)
 
     try:
         with Image.open(io.BytesIO(data)) as img:
+            # 先取 size 再 verify —— verify() 之后对象即不可再使用
+            width, height = img.size
             img.verify()
             real_format = (img.format or "").upper()
     except Exception:
@@ -126,7 +139,7 @@ def _verify_image_content(data: bytes, ext: str) -> None:
     # AVIF 需 Pillow ≥ 11.3 或额外解码器；识别不出时退回文件头校验，避免误杀
     if ext == ".avif" and real_format == "":
         _verify_magic(data, ext)
-        return
+        return (int(width), int(height))
 
     expected_ext = _PIL_FORMAT_TO_EXT.get(real_format)
     if expected_ext and expected_ext != ext:
@@ -139,6 +152,7 @@ def _verify_image_content(data: bytes, ext: str) -> None:
         raise HTTPException(
             status_code=400, detail=f"不支持的图片格式：{real_format}"
         )
+    return (int(width), int(height))
 
 
 def _sanitize_svg(data: bytes) -> bytes:
@@ -236,8 +250,11 @@ async def list_media(
             "id": str(m.id),
             "filename": m.filename,
             "url": m.url,
+            "alt": m.alt or "",
             "mime_type": m.mime_type,
             "size": m.size,
+            "width": m.width or 0,
+            "height": m.height or 0,
             "created_at": m.created_at,
         }
         for m in rows
@@ -248,6 +265,7 @@ async def list_media(
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload(
     file: UploadFile = File(...),
+    alt: str = Form("", max_length=255, description="图片替代文本（可选）"),
     session: AsyncSession = Depends(get_db),
     admin=Depends(get_current_admin),
 ):
@@ -276,23 +294,50 @@ async def upload(
     if not data:
         raise HTTPException(status_code=400, detail="空文件")
 
-    # 2) 内容真校验：SVG 走 XML 净化，其余位图走 Pillow 解码 + 格式比对
+    # 2) 内容真校验：SVG 走 XML 净化，其余位图走 Pillow 解码 + 格式比对并取尺寸
+    width = height = 0
     if ext == ".svg":
         data = _sanitize_svg(data)
+        # SVG 的显示尺寸由 viewBox 与 CSS 共同决定，没有唯一的像素尺寸，
+        # 因此不采集（前端对 SVG 不做 CLS 占位，由容器样式兜底）。
     else:
-        _verify_image_content(data, ext)
+        width, height = _verify_image_content(data, ext)
 
-    # 3) 随机文件名，避免路径穿越与覆盖
     root = Path(settings.MEDIA_ROOT)
     root.mkdir(parents=True, exist_ok=True)
-    filename = f"{uuid.uuid4().hex}{ext}"
-    (root / filename).write_bytes(data)
+
+    # 3) 同图不重复落盘：命中已有记录则复用其物理文件，但仍建**独立记录**。
+    #    独立记录才能各自归属、各自删除；共享文件的安全性由 delete_media 的
+    #    引用计数守卫保证（最后一条引用消失时才 unlink）。
+    digest = hashlib.sha256(data).hexdigest()
+    reused = (
+        await session.execute(
+            select(Media)
+            .where(Media.content_hash == digest, Media.content_hash != "")
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if reused is not None and (root / reused.filename).is_file():
+        filename = reused.filename
+        url = reused.url
+        deduped = True
+    else:
+        # 随机文件名，避免路径穿越与覆盖
+        filename = f"{uuid.uuid4().hex}{ext}"
+        (root / filename).write_bytes(data)
+        url = f"{settings.MEDIA_URL.rstrip('/')}/{filename}"
+        deduped = False
 
     media = Media(
         filename=filename,
-        url=f"{settings.MEDIA_URL.rstrip('/')}/{filename}",
+        url=url,
+        alt=alt.strip()[:255],
         mime_type=file.content_type or "",
         size=len(data),
+        width=width,
+        height=height,
+        content_hash=digest,
         uploader_id=admin.id,
     )
     session.add(media)
@@ -303,10 +348,40 @@ async def upload(
             "id": str(media.id),
             "url": media.url,
             "filename": filename,
+            "alt": media.alt,
             "size": media.size,
+            "width": media.width,
+            "height": media.height,
+            "deduped": deduped,
         },
-        message="上传成功",
+        message="已存在相同图片，复用已有文件" if deduped else "上传成功",
     )
+
+
+@router.patch("/{media_id}")
+async def update_media(
+    media_id: str,
+    payload: MediaUpdate,
+    session: AsyncSession = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    """更新媒体元数据（当前仅 alt）。
+
+    alt 之所以要存在媒体记录上：同一张图可能被多篇文章引用，
+    在媒体库里维护一次，编辑器插入图片时即可作为默认替代文本回填，
+    不必每次手写 —— 这是媒体 alt 的真实读取路径。
+    """
+    try:
+        media = await session.get(Media, uuid.UUID(media_id))
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(status_code=400, detail="非法 ID")
+    if media is None:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    if payload.alt is not None:
+        media.alt = payload.alt.strip()[:255]
+    await session.commit()
+    return ok({"id": media_id, "alt": media.alt}, message="已更新")
 
 
 @router.delete("/{media_id}")
@@ -322,9 +397,21 @@ async def delete_media(
     if media is None:
         raise HTTPException(status_code=404, detail="文件不存在")
 
-    path = Path(settings.MEDIA_ROOT) / media.filename
-    if path.exists() and path.is_file():
-        path.unlink()
+    # 引用计数守卫：相同图片只落盘一次，因此同一物理文件可能被多条记录共用。
+    # 删掉其中一条就把文件 unlink 掉，会连带弄坏其余仍在使用该文件的记录，
+    # 只有确认没有其他记录引用时才真正删除物理文件。
+    others = (
+        await session.execute(
+            select(func.count(Media.id)).where(
+                Media.filename == media.filename, Media.id != media.id
+            )
+        )
+    ).scalar_one()
+    if (others or 0) == 0:
+        path = Path(settings.MEDIA_ROOT) / media.filename
+        if path.exists() and path.is_file():
+            path.unlink()
+
     await session.delete(media)
     await session.commit()
     return ok({"id": media_id}, message="已删除")

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Integer,
@@ -26,6 +27,10 @@ class Post(UUIDPkMixin, TimestampMixin, Base):
     __tablename__ = "posts"
     __table_args__ = (
         Index("ix_posts_status_published_at", "status", "published_at"),
+        # 列表页固定按「置顶优先」排序，三列复合索引正好覆盖
+        # WHERE status = ? ORDER BY is_pinned DESC, published_at DESC。
+        # 上面的两列索引仍保留：归档页只按 published_at 排序，用不上这个三列索引。
+        Index("ix_posts_status_pinned_published", "status", "is_pinned", "published_at"),
     )
 
     author_id: Mapped[uuid.UUID] = mapped_column(
@@ -42,9 +47,17 @@ class Post(UUIDPkMixin, TimestampMixin, Base):
     content_html: Mapped[str] = mapped_column(Text, default="")
     toc: Mapped[str] = mapped_column(Text, default="")  # TOC 的 JSON 缓存
     cover_url: Mapped[str] = mapped_column(String(500), default="")
-    status: Mapped[int] = mapped_column(
-        SmallInteger, default=PostStatus.DRAFT, index=True
-    )
+    # 注意：这里刻意不给 status 加 index=True。
+    # `ix_posts_status_published_at` 是 (status, published_at) 复合索引，status 已是最左前缀，
+    # 单独再建一条 ix_posts_status 属冗余；0001 迁移也从未创建过它。
+    status: Mapped[int] = mapped_column(SmallInteger, default=PostStatus.DRAFT)
+    # ---- SEO 覆盖项：留空/关时完全走全站默认规则，不产生任何行为差异 ----
+    # canonical_url 用于转载、合作稿、多域名镜像等场景显式指定规范链接；
+    # noindex 用于「已发布但不希望被收录」的内容（如临时公告、内部文档）。
+    canonical_url: Mapped[str] = mapped_column(String(500), default="")
+    noindex: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 置顶：仅影响列表页排序（始终排在最前），不影响归档与 RSS 的时序
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     reading_time: Mapped[int] = mapped_column(Integer, default=1)  # 分钟
     published_at: Mapped[datetime | None] = mapped_column(

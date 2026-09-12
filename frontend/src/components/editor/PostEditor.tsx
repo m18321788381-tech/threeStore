@@ -32,6 +32,9 @@ export function PostEditor({ postId }: { postId?: string }) {
   const [categoryId, setCategoryId] = useState("");
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [status, setStatus] = useState(0);
+  const [isPinned, setIsPinned] = useState(false);
+  const [canonicalUrl, setCanonicalUrl] = useState("");
+  const [noindex, setNoindex] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
 
@@ -51,6 +54,9 @@ export function PostEditor({ postId }: { postId?: string }) {
     category_id: categoryId,
     tag_ids: tagIds,
     status,
+    is_pinned: isPinned,
+    canonical_url: canonicalUrl,
+    noindex,
   });
 
   const { data: categories } = useQuery({
@@ -79,6 +85,9 @@ export function PostEditor({ postId }: { postId?: string }) {
     setCategoryId(existing.category?.id || "");
     setTagIds((existing.tags || []).map((t) => t.id));
     setStatus(existing.status ?? 0);
+    setIsPinned(Boolean(existing.is_pinned));
+    setCanonicalUrl(existing.canonical_url || "");
+    setNoindex(Boolean(existing.noindex));
   }, [existing]);
 
   // 服务端内容就绪后核对本地草稿：只有在确实比服务端内容「新」时才提示恢复，
@@ -103,6 +112,9 @@ export function PostEditor({ postId }: { postId?: string }) {
       category_id: existing?.category?.id ?? "",
       tag_ids: (existing?.tags || []).map((t) => t.id),
       status: existing?.status ?? 0,
+      is_pinned: Boolean(existing?.is_pinned),
+      canonical_url: existing?.canonical_url ?? "",
+      noindex: Boolean(existing?.noindex),
     };
 
     if (sameDraft(draft, server)) {
@@ -138,6 +150,9 @@ export function PostEditor({ postId }: { postId?: string }) {
     categoryId,
     tagIds,
     status,
+    isPinned,
+    canonicalUrl,
+    noindex,
     postId,
     isLoading,
     pendingDraft,
@@ -153,6 +168,9 @@ export function PostEditor({ postId }: { postId?: string }) {
     setCategoryId(draft.category_id);
     setTagIds(draft.tag_ids);
     setStatus(draft.status);
+    setIsPinned(draft.is_pinned);
+    setCanonicalUrl(draft.canonical_url);
+    setNoindex(draft.noindex);
     setPendingDraft(null);
     lastSavedRef.current = Date.now();
     setAutosavedAt(lastSavedRef.current);
@@ -174,6 +192,9 @@ export function PostEditor({ postId }: { postId?: string }) {
         category_id: categoryId || null,
         tag_ids: tagIds,
         status: nextStatus,
+        is_pinned: isPinned,
+        canonical_url: canonicalUrl.trim(),
+        noindex,
       };
       if (postId) return api.updatePost(postId, payload);
       return api.createPost({ ...payload, status: nextStatus });
@@ -341,6 +362,56 @@ export function PostEditor({ postId }: { postId?: string }) {
           className="input font-mono text-xs"
         />
       </label>
+
+      <fieldset className="rounded-btn border border-border px-3.5 py-3">
+        <legend className="px-1 text-meta text-muted">展示与收录</legend>
+        <div className="space-y-3.5">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isPinned}
+              onChange={(e) => setIsPinned(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              置顶这篇文章
+              <span className="mt-0.5 block text-meta text-muted">
+                仅影响列表页排序（始终排在最前）；归档页与 RSS 仍按时间排列。
+              </span>
+            </span>
+          </label>
+
+          <label className="block text-sm">
+            <span className="field-label text-muted">
+              规范链接 Canonical（留空即用本站地址）
+            </span>
+            <input
+              value={canonicalUrl}
+              onChange={(e) => setCanonicalUrl(e.target.value)}
+              placeholder="https://原始出处.example.com/post"
+              className="input font-mono text-xs"
+            />
+            <span className="mt-1 block text-meta text-muted">
+              适用于转载、合作稿、多域名镜像：告诉搜索引擎哪个地址才是正本。
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={noindex}
+              onChange={(e) => setNoindex(e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              不参与搜索引擎收录（noindex）
+              <span className="mt-0.5 block text-meta text-muted">
+                文章仍可正常访问与分享，只是不会出现在搜索结果里。
+              </span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
 
       <div>
         <span className="field-label text-muted">标签</span>

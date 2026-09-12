@@ -32,6 +32,12 @@ export interface PostListItem {
   summary: string;
   cover_url: string;
   status: number;
+  /** 置顶：仅影响列表页排序（始终最前） */
+  is_pinned: boolean;
+  /** SEO 覆盖：留空时使用本站规范路径 */
+  canonical_url: string;
+  /** SEO 覆盖：为 true 时输出 robots noindex */
+  noindex: boolean;
   view_count: number;
   reading_time: number;
   published_at: string | null;
@@ -147,7 +153,6 @@ export interface StatsOverview {
   tag_count: number;
   media_count: number;
   total_views: number;
-  views_last_7d: number;
   link_count: number;
 }
 
@@ -155,8 +160,13 @@ export interface MediaItem {
   id: string;
   filename: string;
   url: string;
+  /** 图片替代文本，可在媒体库编辑 */
+  alt: string;
   mime_type: string;
   size: number;
+  /** 像素尺寸：0 表示未采集到（如 SVG 无唯一像素尺寸） */
+  width: number;
+  height: number;
   created_at: string | null;
 }
 

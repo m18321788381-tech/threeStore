@@ -206,7 +206,16 @@ export const api = {
   stats: () => request<StatsOverview>("GET", "/stats/overview"),
   media: (page = 1, page_size = 24) =>
     request<Paginated<MediaItem>>("GET", "/media", undefined, { page, page_size }),
-  upload: (form: FormData) => request<{ url: string }>("POST", "/media/upload", form),
+  upload: (form: FormData) =>
+    request<{
+      url: string;
+      alt: string;
+      width: number;
+      height: number;
+      deduped: boolean;
+    }>("POST", "/media/upload", form),
+  updateMedia: (id: string, body: { alt: string }) =>
+    request<{ id: string; alt: string }>("PATCH", `/media/${id}`, body),
   deleteMedia: (id: string) => request<{ id: string }>("DELETE", `/media/${id}`),
   login: (username: string, password: string) =>
     request<{ access_token: string; refresh_token: string; expires_in: number }>(

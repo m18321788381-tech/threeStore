@@ -41,6 +41,10 @@ except ImportError:  # pragma: no cover - 取决于部署环境
 WIKI_LINK_RE = re.compile(r"\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]")
 HEADING_RE = re.compile(r"<h([1-6])>(.*?)</h\1>", re.S)
 TAG_RE = re.compile(r"<[^>]+>")
+# <img> 标签整体（markdown-it 默认输出不带自闭合斜杠，但两种都兜住）
+IMG_TAG_RE = re.compile(r"<img\s[^>]*?/?>", re.I)
+IMG_SRC_RE = re.compile(r"""\bsrc\s*=\s*["']([^"']+)["']""", re.I)
+ATTR_RE_FMT = r"""\b{}\s*=\s*["']([^"']*)["']"""
 # 注意：必须用 str.format 占位；写成 "%%WIKILINK%d%%" % i 会把 %% 折叠成单个 %，
 # 导致 PLACEHOLDER_RE 永不匹配、[[链接]] 以原始占位符形式泄漏到正文里。
 PLACEHOLDER_FMT = "%%WIKILINK{idx}%%"
@@ -158,14 +162,79 @@ def _inject_heading_ids(html_text: str) -> tuple[str, list[TocItem]]:
     return HEADING_RE.sub(_repl, html_text), toc
 
 
+# ----------------------------------------------------------- 图片属性补全 ---
+def _attr_value(tag: str, name: str) -> str | None:
+    m = re.search(ATTR_RE_FMT.format(name), tag, re.I)
+    return m.group(1) if m else None
+
+
+def _append_attrs(tag: str, additions: dict[str, str]) -> str:
+    """把属性追加到 <img ...> 收尾之前，原有属性一律不动。"""
+    body = tag[:-1] if tag.endswith(">") else tag
+    if body.endswith("/"):
+        body = body[:-1].rstrip()
+    for name, value in additions.items():
+        body += f' {name}="{value}"'
+    return f"{body}>"
+
+
+def inject_image_dimensions(
+    html_text: str, media_meta: dict[str, tuple[int, int, str]]
+) -> str:
+    """给正文里引用站内媒体的 <img> 补上 width/height，并在 alt 为空时兜底。
+
+    为什么必须在**服务端渲染时**注入：
+      浏览器只有在初始 HTML 里拿到尺寸，才能在图片解码完成前预留占位空间。
+      前端脚本再补已经晚了 —— 等脚本执行时布局已经跳动过一次，
+      CLS（累积布局偏移）已经被计入。技术博客正文截图多，这是主要失分点。
+
+    为什么顺手补 alt：
+      markdown 写成 `![](/media/x.png)` 时产出的是空 alt，
+      而 alt 是媒体库里已经维护过一次的信息，没有理由让它空着。
+      作者手写了 alt 则以作者为准（见下方判断）。
+
+    :param media_meta: {filename: (width, height, alt)}，由调用方一次性查出。
+        这是纯函数：不查库、不依赖 session，便于单测。
+    """
+    if not html_text or not media_meta:
+        return html_text
+
+    def _repl(match: re.Match) -> str:
+        tag = match.group(0)
+        src = IMG_SRC_RE.search(tag)
+        if not src:
+            return tag
+        # 去掉查询串后取末段文件名，兼容绝对地址、相对地址与 CDN 前缀
+        name = src.group(1).split("?")[0].rsplit("/", 1)[-1]
+        info = media_meta.get(name)
+        if info is None:
+            return tag
+        width, height, alt = info
+
+        additions: dict[str, str] = {}
+        if width > 0 and height > 0:
+            additions["width"] = str(width)
+            additions["height"] = str(height)
+        if alt and not _attr_value(tag, "alt"):
+            additions["alt"] = html.escape(alt, quote=True)
+        if not additions:
+            return tag
+        return _append_attrs(tag, additions)
+
+    return IMG_TAG_RE.sub(_repl, html_text)
+
+
 # --------------------------------------------------------------- 主入口 ---
 def render_markdown(
     md_text: str,
     wiki_resolver: "callable | None" = None,  # type: ignore[valid-type]
+    media_meta: dict[str, tuple[int, int, str]] | None = None,
 ) -> RenderResult:
     """渲染 Markdown -> (html, toc, wiki_targets, reading_time)。
 
     :param wiki_resolver: 接收「笔记名」，返回 slug 或 None（未匹配）
+    :param media_meta: {filename: (width, height, alt)}，用于给正文图片补
+        width/height/alt（见 inject_image_dimensions）。传 None 则跳过。
     """
     source = md_text or ""
     wikilinks = extract_wikilinks(source)
@@ -218,6 +287,10 @@ def render_markdown(
 
     # 5) 标题锚点 + TOC
     final_html, toc = _inject_heading_ids(clean_html)
+
+    # 6) 站内图片补 width/height/alt（必须在 bleach 之后：注入的属性不再过白名单，
+    #    这是安全的——值全部来自本地媒体表，不含用户可控的 HTML）
+    final_html = inject_image_dimensions(final_html, media_meta or {})
 
     return RenderResult(
         html=final_html,

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { serverGet } from "@/lib/api";
 import { PostCard } from "@/components/post/PostCard";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
 import { EmptyState } from "@/components/common/EmptyState";
 import type { Paginated, PostListItem, Category } from "@/types";
@@ -40,9 +41,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-content">
+      <Breadcrumb
+        items={[{ name: "分类", href: "/categories" }, { name: category.name }]}
+      />
       <header className="page-head">
-        <p className="text-sm text-muted">分类</p>
-        <h1 className="page-title mt-1">{category.name}</h1>
+        <h1 className="page-title">{category.name}</h1>
         {category.description && (
           <p className="page-desc">{category.description}</p>
         )}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { serverGet } from "@/lib/api";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { EmptyState } from "@/components/common/EmptyState";
 import type { ArchiveGroup } from "@/types";
 
@@ -24,6 +25,7 @@ export default async function ArchivePage() {
 
   return (
     <div>
+      <Breadcrumb items={[{ name: "归档" }]} />
       <header className="page-head">
         <h1 className="text-[26px] font-bold tracking-tight">
           归档 · 共 {data?.total ?? 0} 篇文章

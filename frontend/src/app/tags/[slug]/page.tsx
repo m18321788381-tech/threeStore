@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { serverGet } from "@/lib/api";
 import { PostCard } from "@/components/post/PostCard";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
 import { EmptyState } from "@/components/common/EmptyState";
 import type { Paginated, PostListItem, Tag } from "@/types";
@@ -37,9 +38,11 @@ export default async function TagPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-content">
+      <Breadcrumb
+        items={[{ name: "标签", href: "/tags" }, { name: `#${tag.name}` }]}
+      />
       <header className="page-head">
-        <p className="text-sm text-muted">标签</p>
-        <h1 className="page-title mt-1">#{tag.name}</h1>
+        <h1 className="page-title">#{tag.name}</h1>
         <p className="mt-2 text-meta text-muted">共 {data?.total ?? 0} 篇</p>
       </header>
 

@@ -5,6 +5,7 @@ from app.models.comment import Comment
 from app.models.media import Media, PostStat
 from app.models.post import Post
 from app.models.post_link import PostLink
+from app.models.redirect import Redirect
 from app.models.tag import Tag, post_tags
 from app.models.user import User
 
@@ -16,6 +17,7 @@ __all__ = [
     "Post",
     "PostLink",
     "PostStat",
+    "Redirect",
     "Tag",
     "User",
     "post_tags",

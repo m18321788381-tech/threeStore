@@ -20,6 +20,10 @@ export type DraftSnapshot = {
   category_id: string;
   tag_ids: string[];
   status: number;
+  /** 置顶与 SEO 覆盖项：虽属「设置」而非正文，但同样是一分钟的手工输入，一并纳入快照 */
+  is_pinned: boolean;
+  canonical_url: string;
+  noindex: boolean;
   /** 写入时刻（毫秒时间戳），用于「发现于 x 分钟前」提示 */
   saved_at: number;
 };
@@ -44,6 +48,11 @@ export function readDraft(key: string): DraftSnapshot | null {
     return {
       ...parsed,
       tag_ids: Array.isArray(parsed.tag_ids) ? parsed.tag_ids : [],
+      // 兼容本次改动之前写入的旧快照：缺字段时按「不置顶 / 无覆盖 / 可收录」补齐，
+      // 避免把 undefined 灌进受控表单
+      is_pinned: Boolean(parsed.is_pinned),
+      canonical_url: typeof parsed.canonical_url === "string" ? parsed.canonical_url : "",
+      noindex: Boolean(parsed.noindex),
       saved_at: Number(parsed.saved_at) || 0,
     };
   } catch {
@@ -83,6 +92,9 @@ export function sameDraft(a: DraftForm, b: DraftForm): boolean {
     a.content_md === b.content_md &&
     a.category_id === b.category_id &&
     a.status === b.status &&
+    a.is_pinned === b.is_pinned &&
+    a.canonical_url === b.canonical_url &&
+    a.noindex === b.noindex &&
     a.tag_ids.length === b.tag_ids.length &&
     a.tag_ids.every((id, i) => id === b.tag_ids[i])
   );

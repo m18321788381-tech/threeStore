@@ -45,6 +45,14 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-posts"] }),
   });
 
+  // 置顶走通用的文章更新接口（PostUpdate 全字段可选，天然支持局部更新）。
+  // 置顶只影响前台列表页排序，不影响归档页与 RSS 的时序。
+  const pin = useMutation({
+    mutationFn: ({ id, next }: { id: string; next: boolean }) =>
+      api.updatePost(id, { is_pinned: next }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-posts"] }),
+  });
+
   const result = (data || { items: [], pages: 0, total: 0, page: 1, page_size: 15 }) as Paginated<
     PostListItem
   >;
@@ -87,7 +95,7 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
                 <th className="w-20">状态</th>
                 <th className="w-16 text-right">阅读</th>
                 <th className="w-24">更新</th>
-                <th className="w-44 text-right">操作</th>
+                <th className="w-56 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -100,8 +108,12 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
                     >
                       {post.title}
                     </Link>
-                    <span className="mt-0.5 block truncate font-mono text-[11px] text-muted">
-                      /{post.slug}
+                    <span className="mt-0.5 flex items-center gap-1.5">
+                      {post.is_pinned && <span className="badge badge-accent">置顶</span>}
+                      {post.noindex && <span className="badge badge-muted">不收录</span>}
+                      <span className="truncate font-mono text-[11px] text-muted">
+                        /{post.slug}
+                      </span>
                     </span>
                   </td>
                   <td className="text-muted">{post.category?.name || "—"}</td>
@@ -129,6 +141,17 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
                       <Link href={`/admin/posts/${post.id}/edit`} className="row-action">
                         编辑
                       </Link>
+                      <button
+                        type="button"
+                        disabled={pin.isPending}
+                        aria-pressed={post.is_pinned}
+                        onClick={() =>
+                          pin.mutate({ id: post.id, next: !post.is_pinned })
+                        }
+                        className="row-action"
+                      >
+                        {post.is_pinned ? "取消置顶" : "置顶"}
+                      </button>
                       <button
                         type="button"
                         disabled={remove.isPending}

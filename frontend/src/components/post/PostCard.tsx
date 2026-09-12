@@ -7,6 +7,7 @@ export function PostCard({ post }: { post: PostListItem }) {
   return (
     <article className="post-row group">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-muted">
+        {post.is_pinned && <span className="badge badge-accent">置顶</span>}
         {post.category && (
           <Link
             href={`/categories/${post.category.slug}`}

@@ -17,6 +17,7 @@ from app.models import (  # noqa: F401  确保全部模型注册到 metadata
     Post,
     PostLink,
     PostStat,
+    Redirect,
     Tag,
     User,
 )

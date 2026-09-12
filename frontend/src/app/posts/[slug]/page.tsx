@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { serverGet } from "@/lib/api";
 import { siteConfig } from "@/lib/site";
@@ -11,6 +11,7 @@ import { ViewCounter } from "@/components/post/ViewCounter";
 import { TOC } from "@/components/post/TOC";
 import { CommentSection } from "@/components/comment/CommentSection";
 import { Backlinks } from "@/components/garden/Backlinks";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import type { PostDetail, LinkData } from "@/types";
 
 export const revalidate = 300; // 详情内容变更不频繁，5 分钟 ISR
@@ -42,7 +43,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     keywords: (post.tags || []).map((t) => t.name),
     authors: [{ name: post.author?.display_name || siteConfig.author }],
-    alternates: { canonical: `/posts/${post.slug}` },
+    alternates: {
+      // canonical_url 由博主显式指定（转载、合作稿、多域名镜像场景），
+      // 留空时回落到本站规范路径 —— 默认行为与加这个字段之前完全一致。
+      canonical: post.canonical_url || `/posts/${post.slug}`,
+    },
+    // 显式 noindex：内容已发布但不希望被收录（临时公告、内部文档等）。
+    // 缺省不输出该字段，即沿用全站默认的「可收录」。
+    robots: post.noindex ? { index: false, follow: false } : undefined,
     openGraph: {
       type: "article",
       title: post.title,
@@ -65,7 +73,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PostPage({ params }: Props) {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) notFound();
+
+  if (!post) {
+    // 旧 slug 301：文章改过 slug 之后，外链与搜索引擎里已收录的旧地址
+    // 仍应能到达新地址，而不是直接 404 丢掉已积累的权重。
+    // 必须由服务端（渲染层）发起，爬虫与不执行 JS 的客户端才能拿到真实状态码。
+    const moved = await serverGet<{ slug: string | null }>("/redirects/resolve", {
+      params: { slug },
+      revalidate: 0,
+    });
+    if (moved?.slug && moved.slug !== slug) {
+      permanentRedirect(`/posts/${moved.slug}`);
+    }
+    notFound();
+  }
 
   const links = await serverGet<LinkData>(`/posts/${slug}/links`, { revalidate: 300 });
 
@@ -93,8 +114,23 @@ export default async function PostPage({ params }: Props) {
       />
 
       <article className="min-w-0 max-w-content">
+        <Breadcrumb
+          items={[
+            ...(post.category
+              ? [
+                  {
+                    name: post.category.name,
+                    href: `/categories/${post.category.slug}`,
+                  },
+                ]
+              : []),
+            { name: post.title },
+          ]}
+        />
+
         <header className="mb-8">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-meta text-muted">
+            {post.is_pinned && <span className="badge badge-accent">置顶</span>}
             {post.category && (
               <Link
                 href={`/categories/${post.category.slug}`}

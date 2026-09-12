@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { serverGet } from "@/lib/api";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { EmptyState } from "@/components/common/EmptyState";
 import type { Category } from "@/types";
 
@@ -12,6 +13,7 @@ export default async function CategoriesPage() {
 
   return (
     <div className="mx-auto max-w-content">
+      <Breadcrumb items={[{ name: "分类" }]} />
       <header className="page-head">
         <h1 className="page-title">分类</h1>
         <p className="page-desc">按主题浏览全部文章。</p>

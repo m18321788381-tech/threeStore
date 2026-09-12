@@ -14,6 +14,75 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/**
+ * 替代文本（alt）行内编辑。
+ *
+ * 之所以要维护在媒体库而不是只在写文章时填：
+ *   同一张图常被多篇文章复用，正文里写 `![](/media/x.png)` 会产出**空 alt**；
+ *   服务端渲染时会用这里维护的值兜底补上（见后端 inject_image_dimensions），
+ *   于是一次填写惠及所有引用处，也让读屏软件与图片搜索有内容可用。
+ */
+function AltEditor({ item, onSaved }: { item: MediaItem; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(item.alt || "");
+
+  const save = useMutation({
+    mutationFn: () => api.updateMedia(item.id, { alt: value }),
+    onSuccess: () => {
+      setEditing(false);
+      onSaved();
+    },
+  });
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setValue(item.alt || "");
+          setEditing(true);
+        }}
+        className="block w-full truncate text-left text-[11px] text-muted transition-colors hover:text-accent"
+        title={item.alt || "点击添加"}
+      >
+        {item.alt ? `alt：${item.alt}` : "＋ 添加替代文本"}
+      </button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+      className="flex items-center gap-1.5"
+    >
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="描述这张图"
+        aria-label="图片替代文本"
+        className="input px-2 py-1 text-[11px]"
+      />
+      <button
+        type="submit"
+        disabled={save.isPending}
+        className="row-action shrink-0 text-[11px]"
+      >
+        保存
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        className="row-action shrink-0 text-[11px]"
+      >
+        取消
+      </button>
+    </form>
+  );
+}
+
 export function MediaPanel() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState("");
@@ -84,14 +153,28 @@ export function MediaPanel() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.url}
-                alt={item.filename}
+                alt={item.alt || item.filename}
+                loading="lazy"
+                decoding="async"
                 className="h-32 w-full bg-surface object-contain"
               />
               <div className="space-y-2 p-3">
                 <p className="truncate font-mono text-[11px] text-muted" title={item.url}>
                   {item.url}
                 </p>
-                <p className="text-[11px] text-muted">{formatSize(item.size)}</p>
+                <p className="text-[11px] text-muted tabular-nums">
+                  {formatSize(item.size)}
+                  {item.width > 0 && item.height > 0 && (
+                    <>
+                      {" · "}
+                      {item.width} × {item.height}
+                    </>
+                  )}
+                </p>
+                <AltEditor
+                  item={item}
+                  onSaved={() => queryClient.invalidateQueries({ queryKey: ["media"] })}
+                />
                 <div className="flex gap-2">
                   <button
                     type="button"

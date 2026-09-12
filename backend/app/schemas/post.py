@@ -21,6 +21,11 @@ class PostBase(BaseModel):
     cover_url: str = ""
     category_id: str | None = None
     tag_ids: list[str] = Field(default_factory=list)
+    # 置顶：仅影响列表页排序
+    is_pinned: bool = False
+    # SEO 覆盖项：留空 / 关闭时完全走全站默认规则
+    canonical_url: str = Field(default="", max_length=500)
+    noindex: bool = False
 
 
 class PostCreate(PostBase):
@@ -36,6 +41,9 @@ class PostUpdate(BaseModel):
     category_id: str | None = None
     tag_ids: list[str] | None = None
     status: int | None = None
+    is_pinned: bool | None = None
+    canonical_url: str | None = Field(default=None, max_length=500)
+    noindex: bool | None = None
 
 
 class AuthorOut(BaseModel):
@@ -58,6 +66,9 @@ class PostListItem(ORMModel):
     summary: str = ""
     cover_url: str = ""
     status: int = 0
+    is_pinned: bool = False
+    canonical_url: str = ""
+    noindex: bool = False
     view_count: int = 0
     reading_time: int = 1
     published_at: datetime | None = None

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { serverGet } from "@/lib/api";
 import { PostCard } from "@/components/post/PostCard";
+import { Breadcrumb } from "@/components/common/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PostListSkeleton } from "@/components/common/Skeleton";
@@ -63,6 +64,7 @@ export default async function PostsPage({
 
   return (
     <div className="mx-auto max-w-content">
+      <Breadcrumb items={[{ name: "全部文章" }]} />
       <header className="page-head">
         <h1 className="page-title">全部文章</h1>
         <p className="page-desc">按发布时间倒序排列，共览全部已发布内容。</p>

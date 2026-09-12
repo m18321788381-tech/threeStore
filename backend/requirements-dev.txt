@@ -5,3 +5,7 @@ pytest==8.3.4
 pytest-asyncio==0.25.0
 httpx==0.28.1
 ruff==0.8.6
+
+# 服务层测试用 SQLite 内存库替代 PostgreSQL（本机无 Docker/PG）：
+# 只验证不依赖 PG 专有能力的逻辑（如 redirects 的扁平化），PG 行为仍以迁移+CI 为准
+aiosqlite==0.20.0

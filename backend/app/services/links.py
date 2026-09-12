@@ -8,12 +8,15 @@
 """
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Sequence
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.models.media import Media
 from app.models.post import Post
 from app.models.post_link import PostLink
 from app.services.markdown import extract_wikilinks, render_markdown
@@ -63,13 +66,42 @@ async def build_wiki_resolver(
     return resolver, {p.slug: p.id for p in posts}
 
 
+async def load_media_meta(
+    session: AsyncSession, md_text: str
+) -> dict[str, tuple[int, int, str]]:
+    """收集正文里引用到的站内媒体，返回 {filename: (width, height, alt)}。
+
+    只查这一篇真正用到的那几张图（一次 IN 查询），不随全站媒体总量增长。
+    结果交给 markdown 渲染器注入到 <img> 上，用于消除图片加载的布局偏移（CLS）。
+    """
+    prefix = settings.MEDIA_URL.rstrip("/")
+    if not prefix or not md_text:
+        return {}
+
+    names = set(
+        re.findall(re.escape(prefix) + r"/([A-Za-z0-9._-]+)", md_text)
+    )
+    if not names:
+        return {}
+
+    rows = (
+        await session.execute(
+            select(Media.filename, Media.width, Media.height, Media.alt).where(
+                Media.filename.in_(names)
+            )
+        )
+    ).all()
+    return {name: (w or 0, h or 0, a or "") for name, w, h, a in rows}
+
+
 async def render_post_content(
     session: AsyncSession,
     post: Post,
 ) -> tuple[str, list[dict], int]:
-    """渲染文章正文（含 wiki 链接），返回 (html, toc, reading_time)。"""
+    """渲染文章正文（含 wiki 链接与站内图片尺寸），返回 (html, toc, reading_time)。"""
     resolver, slug_to_id = await build_wiki_resolver(session, post.id)
-    result = render_markdown(post.content_md, resolver)
+    media_meta = await load_media_meta(session, post.content_md)
+    result = render_markdown(post.content_md, resolver, media_meta)
     return result.html, [t.__dict__ for t in result.toc], result.reading_time
 
 
