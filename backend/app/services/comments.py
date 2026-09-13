@@ -21,11 +21,33 @@ def to_dict(c: Comment) -> dict:
         "content": c.content,
         "created_at": c.created_at,
         "parent_id": str(c.parent_id) if c.parent_id else None,
+        "reply_to_name": c.reply_to_name or "",
         "is_author": c.is_author,
         "is_pinned": c.is_pinned,
         "status": c.status,
         "replies": [],
     }
+
+
+def mask_email(email: str) -> str:
+    """邮箱掩码，用于后台**列表**接口。
+
+    隐私合规要求：列表是批量场景，一旦原样返回就等于开放的导出接口。
+    保留首字符与域名，既能让人确认是哪条记录，又不构成可直接使用的邮箱。
+
+    - "" -> ""
+    - "a@b.com" -> "*@b.com"（本地部分太短时不泄漏任何字符）
+    - "alice@b.com" -> "a****@b.com"
+    """
+    value = (email or "").strip()
+    if "@" not in value:
+        return "" if not value else "*" * len(value)
+    local, _, domain = value.partition("@")
+    if len(local) <= 2:
+        head = "*" * len(local)
+    else:
+        head = local[0] + "*" * (len(local) - 1)
+    return f"{head}@{domain}"
 
 
 def build_tree(comments: Sequence[Comment]) -> list[dict]:

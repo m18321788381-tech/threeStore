@@ -9,11 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.enums import UserRole
-from app.core.security import decode_token
+from app.core.security import decode_token, token_version_of
 from app.db.session import get_db
 from app.models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+# 令牌代次不匹配时的统一提示。刻意区别于「Token 已过期」：过期是等一会儿就好，
+# 被吊销是「你必须重新登录」，用户看到不同文案才知道该做什么。
+REVOKED_DETAIL = "凭证已失效，请重新登录"
 
 
 class Pagination:
@@ -67,6 +71,12 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已禁用"
         )
+    # 代次比对：改密码等操作会把 users.token_version 递增，此前签发的 token
+    # 即便签名合法、未过期，也必须失效。这是 JWT 唯一能「主动吊销」的着力点。
+    if token_version_of(payload) != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=REVOKED_DETAIL
+        )
     return user
 
 
@@ -93,7 +103,13 @@ async def optional_user(
     except (ValueError, TypeError):
         return None
     user = await session.get(User, user_id)
-    return user if user and user.is_active else None
+    if user is None or not user.is_active:
+        return None
+    # 与 get_current_user 保持同一套判定，否则「可选鉴权」会成为绕过吊销的后门：
+    # 被吊销的博主 token 在这里若仍被认作博主，评论就能继续免审核直达。
+    if token_version_of(payload) != user.token_version:
+        return None
+    return user
 
 
 __all__ = [

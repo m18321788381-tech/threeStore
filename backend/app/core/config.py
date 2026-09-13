@@ -107,11 +107,15 @@ class Settings(BaseSettings):
     ADMIN_DISPLAY_NAME: str = "博主"
 
     # ---------- Redis（可选；留空则全部降级） ----------
-    # worker 用它缓存 RSS/Sitemap 并接收「内容变更」事件；
-    # 后端也用它做 SEO 产物缓存。REDIS_URL 为空时回退到按需生成。
+    # 后端用它做 SEO 产物缓存与登录限流计数；REDIS_URL 为空时回退到按需生成。
+    #
+    # 注意：仓库内**不存在 worker 进程**。内容变更时的缓存失效由
+    # services/seo.py::invalidate_seo_cache() 同步删除缓存键完成，不依赖后台进程。
+    # 下面两个与 worker 相关的配置仅为「将来引入预热/调度进程」预留，当前不参与运行。
     REDIS_URL: str = ""
-    WORKER_REFRESH_INTERVAL: int = 300  # 秒：worker 周期刷新 SEO 缓存
+    WORKER_REFRESH_INTERVAL: int = 300  # 预留：worker 周期刷新 SEO 缓存
     SEO_CACHE_TTL: int = 3600  # 秒：RSS/Sitemap 缓存有效期
+    RSS_TTL_MINUTES: int = 60  # RSS <ttl>：提示阅读器多久回抓一次（分钟）
 
     # ---------- Logging ----------
     LOG_LEVEL: str = "DEBUG"

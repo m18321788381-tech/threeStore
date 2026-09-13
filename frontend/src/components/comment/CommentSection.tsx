@@ -11,16 +11,19 @@ const PAGE_SIZE = 20;
 function CommentForm({
   slug,
   parentId,
+  replyToName,
   onDone,
   compact = false,
 }: {
   slug: string;
   parentId?: string;
+  replyToName?: string;
   onDone?: () => void;
   compact?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [site, setSite] = useState("");
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
@@ -29,6 +32,7 @@ function CommentForm({
     mutationFn: () =>
       api.createComment(slug, {
         author_name: name.trim() || "匿名访客",
+        author_email: email.trim() || null,
         author_site: site.trim() || null,
         content: content.trim(),
         parent_id: parentId || null,
@@ -55,27 +59,45 @@ function CommentForm({
       className={cn(compact ? "rounded-panel border border-border bg-card p-3" : "comment-form")}
     >
       {!compact && (
-        <div className="mb-2.5 grid gap-2 sm:grid-cols-2">
+        <div className="mb-2.5 grid gap-2 sm:grid-cols-3">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="昵称（选填）"
+            aria-label="昵称"
             maxLength={50}
+            className="input"
+          />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            placeholder="邮箱（选填）"
+            aria-label="邮箱"
+            aria-describedby="comment-email-hint"
+            maxLength={255}
             className="input"
           />
           <input
             value={site}
             onChange={(e) => setSite(e.target.value)}
             placeholder="个人站点（选填）"
+            aria-label="个人站点"
             maxLength={255}
             className="input"
           />
         </div>
       )}
+      {!compact && (
+        <p id="comment-email-hint" className="mb-2.5 text-[12px] leading-relaxed text-muted">
+          邮箱不会公开，也不会用于任何推送；仅博主可见，方便在你留言被回复或需要澄清时联系你。
+        </p>
+      )}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={compact ? "回复这位读者…" : "说点什么…（支持纯文本，提交后需博主审核）"}
+        aria-label={compact ? "回复内容" : "评论内容"}
         rows={compact ? 3 : 4}
         maxLength={2000}
         className="input resize-y"
@@ -92,6 +114,9 @@ function CommentForm({
           >
             取消
           </button>
+        )}
+        {compact && replyToName && (
+          <span className="text-[12.5px] text-muted">正在回复 @{replyToName}</span>
         )}
         {error && (
           <span role="alert" className="text-sm text-error">
@@ -131,6 +156,9 @@ function CommentItem({
         </div>
 
         <p className="mt-1 whitespace-pre-wrap break-words text-[14.5px] leading-relaxed">
+          {comment.reply_to_name && (
+            <span className="mr-1 text-accent">@{comment.reply_to_name}</span>
+          )}
           {comment.content}
         </p>
 
@@ -138,6 +166,7 @@ function CommentItem({
           <div className="mt-1.5 flex gap-3.5 text-[12.5px] text-muted">
             <button
               type="button"
+              aria-expanded={replying}
               onClick={() => setReplying((v) => !v)}
               className="transition-colors hover:text-accent"
             >
@@ -148,7 +177,13 @@ function CommentItem({
 
         {replying && (
           <div className="mt-3">
-            <CommentForm slug={slug} parentId={comment.id} compact onDone={() => setReplying(false)} />
+            <CommentForm
+              slug={slug}
+              parentId={comment.id}
+              replyToName={comment.author_name}
+              compact
+              onDone={() => setReplying(false)}
+            />
           </div>
         )}
 

@@ -38,6 +38,11 @@ class Comment(UUIDPkMixin, TimestampMixin, Base):
     author_site: Mapped[str] = mapped_column(String(255), default="")
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # 被回复者的昵称，由服务端从父评论推导后落库（不接受客户端传入，避免伪造身份）。
+    # 作用有二：① 前端能直接展示「回复 @某某」，不必为每条回复再 join 父评论；
+    # ② 将来做回复通知时，收件人是谁有据可查。
+    reply_to_name: Mapped[str] = mapped_column(String(50), default="")
+
     ip_address: Mapped[str] = mapped_column(String(45), default="")
     user_agent: Mapped[str] = mapped_column(String(500), default="")
 

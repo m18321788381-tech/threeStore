@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Skeleton } from "@/components/common/Skeleton";
 import type { Category, Tag } from "@/types";
 
@@ -17,6 +18,7 @@ export function TaxonomyPanel({ kind }: { kind: "categories" | "tags" }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<Item | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey,
@@ -39,7 +41,10 @@ export function TaxonomyPanel({ kind }: { kind: "categories" | "tags" }) {
 
   const remove = useMutation({
     mutationFn: (id: string) => (isCat ? api.deleteCategory(id) : api.deleteTag(id)),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      setPendingDelete(null);
+      queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   const items = (data || []) as Item[];
@@ -118,10 +123,7 @@ export function TaxonomyPanel({ kind }: { kind: "categories" | "tags" }) {
                     <div className="flex justify-end">
                       <button
                         type="button"
-                        disabled={remove.isPending}
-                        onClick={() => {
-                          if (window.confirm(`删除「${item.name}」？`)) remove.mutate(item.id);
-                        }}
+                        onClick={() => setPendingDelete(item)}
                         className="row-action-danger"
                       >
                         删除
@@ -134,6 +136,25 @@ export function TaxonomyPanel({ kind }: { kind: "categories" | "tags" }) {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        danger
+        title={isCat ? "删除分类" : "删除标签"}
+        description={
+          pendingDelete
+            ? isCat
+              ? `将删除分类「${pendingDelete.name}」。其下文章不会被删除，但会回落到「未分类」——该分类页随即失效。`
+              : `将删除标签「${pendingDelete.name}」。它只是从所有文章上解绑，文章本身不受影响。`
+            : ""
+        }
+        confirmLabel="删除"
+        pending={remove.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) remove.mutate(pendingDelete.id);
+        }}
+      />
     </div>
   );
 }

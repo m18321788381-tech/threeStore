@@ -1,4 +1,4 @@
-from app.schemas.auth import LoginIn, RefreshIn, TokenOut, UserOut
+from app.schemas.auth import ChangePasswordIn, LoginIn, RefreshIn, TokenOut, UserOut
 from app.schemas.comment import (
     CommentAdminItem,
     CommentCreate,
@@ -34,7 +34,7 @@ from app.schemas.taxonomy import (
 
 __all__ = [
     "ApiResponse", "ORMModel", "Paginated", "ok", "paginate",
-    "LoginIn", "RefreshIn", "TokenOut", "UserOut",
+    "LoginIn", "RefreshIn", "TokenOut", "UserOut", "ChangePasswordIn",
     "PostCreate", "PostUpdate", "PostOut", "PostListItem", "PostDetail",
     "RefOut", "TocItemOut", "LinksOut",
     "CategoryCreate", "CategoryUpdate", "CategoryOut",

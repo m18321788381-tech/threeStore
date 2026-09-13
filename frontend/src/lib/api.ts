@@ -27,13 +27,25 @@ export const INTERNAL_API =
 export const API_PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "/api/v1";
 
 /**
+ * 查询参数类型。
+ *
+ * 允许 boolean 是刻意的：后端不少开关型 Query 参数（如 list_posts 的 all_statuses）
+ * 需要显式传值才能表达意图，而 `buildUrl` 会 `String(value)` 成 "true"/"false"，
+ * FastAPI 的 bool 解析器认这两种字面量。undefined / null 与 "" 一律被跳过。
+ */
+export type QueryParams = Record<
+  string,
+  string | number | boolean | undefined | null
+>;
+
+/**
  * 拼接请求地址。base 传空串表示浏览器侧同源请求（由 next.config 反代到 backend），
  * 此时必须给 URL 一个绝对基底，否则 new URL("/api/v1/...") 会抛 Invalid URL。
  */
 export function buildUrl(
   base: string,
   path: string,
-  params?: Record<string, string | number | undefined | null>
+  params?: QueryParams
 ) {
   const origin =
     typeof window === "undefined" ? INTERNAL_API : window.location.origin;
@@ -121,7 +133,7 @@ async function request<T>(
   method: string,
   path: string,
   body?: unknown,
-  params?: Record<string, string | number | undefined | null>
+  params?: QueryParams
 ): Promise<T> {
   const isForm = body instanceof FormData;
   const res = await fetch(buildUrl("", `${API_PREFIX}${path}`, params), {
@@ -150,7 +162,7 @@ async function request<T>(
 
 export const api = {
   /* 文章 */
-  posts: (params?: Record<string, string | number | undefined>) =>
+  posts: (params?: QueryParams) =>
     request<Paginated<PostListItem>>("GET", "/posts", undefined, params),
   post: (slug: string) => request<PostDetail>("GET", `/posts/${slug}`),
   adminPost: (id: string) => request<PostDetail>("GET", `/posts/admin/${id}`),
@@ -194,6 +206,8 @@ export const api = {
     request<{ id: string; status: number }>("POST", `/posts/${slug}/comments`, body),
   adminComments: (params: Record<string, string | number | undefined>) =>
     request<Paginated<AdminComment>>("GET", "/comments", undefined, params),
+  /** 单条评论：返回完整邮箱（列表接口是掩码的），用于需要回信时。 */
+  adminComment: (id: string) => request<AdminComment>("GET", `/comments/${id}`),
   updateComment: (id: string, body: unknown) =>
     request<{ id: string }>("PATCH", `/comments/${id}`, body),
   deleteComment: (id: string) => request<{ id: string }>("DELETE", `/comments/${id}`),
@@ -222,6 +236,17 @@ export const api = {
       "POST",
       "/auth/login",
       { username, password }
+    ),
+  /**
+   * 改密码。成功后后端会把该账号已签发的**全部**令牌作废（token_version +1），
+   * 并返回按新代次签发的令牌对 —— 调用方务必用新 token 覆盖本地凭证，
+   * 否则当前这台设备在 401 到来时会被踢回登录页。
+   */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ access_token: string; refresh_token: string; expires_in: number }>(
+      "POST",
+      "/auth/change-password",
+      { current_password: currentPassword, new_password: newPassword }
     ),
   me: () =>
     request<{ id: string; username: string; display_name: string; role: number }>(

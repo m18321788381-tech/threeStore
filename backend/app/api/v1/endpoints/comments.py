@@ -24,7 +24,7 @@ from app.db.session import get_db
 from app.models.comment import Comment
 from app.models.post import Post
 from app.schemas import CommentCreate, CommentUpdate, ok, paginate
-from app.services.comments import build_tree, validate_comment
+from app.services.comments import build_tree, mask_email, validate_comment
 
 # 挂在 /posts 下：GET|POST /api/v1/posts/{slug}/comments
 post_comments_router = APIRouter(prefix="/posts", tags=["comments"])
@@ -147,6 +147,8 @@ async def create_comment(
     comment = Comment(
         post_id=post.id,
         parent_id=parent.id if parent else None,
+        # 被回复者昵称由服务端推导，不接受客户端传值——否则可伪造「某某回复了你」。
+        reply_to_name=(parent.author_name if parent else "")[:50],
         author_name=(payload.author_name or "匿名访客").strip()[:50],
         author_email=(payload.author_email or "").strip(),
         author_site=(payload.author_site or "").strip(),
@@ -199,10 +201,13 @@ async def admin_list_comments(
             "id": str(c.id),
             "author_name": c.author_name,
             "author_site": c.author_site,
-            "author_email": c.author_email,
+            # 列表是批量场景：原样返回等于开放了一个邮箱导出接口。
+            # 需要完整邮箱去回信时走单条接口 GET /comments/{id}（见下方 contact）。
+            "author_email": mask_email(c.author_email),
             "content": c.content,
             "created_at": c.created_at,
             "parent_id": str(c.parent_id) if c.parent_id else None,
+            "reply_to_name": c.reply_to_name or "",
             "is_author": c.is_author,
             "is_pinned": c.is_pinned,
             "status": c.status,
@@ -295,6 +300,43 @@ async def comment_stats(
             "approved": approved,
             "spam": spam,
             "last_7d": recent,
+        }
+    )
+
+
+# ⚠️ 注册顺序：本路由必须放在 /stats/summary 之后。
+# FastAPI 按注册顺序匹配，若放在前面，"stats" 会被当成 comment_id 而报 400。
+@router.get("/{comment_id}")
+async def admin_get_comment(
+    comment_id: str,
+    session: AsyncSession = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    """单条评论详情：返回**完整**邮箱，供博主回信时使用。
+
+    与列表接口的分工是刻意设计的：列表脱敏（防批量导出式泄漏），
+    单条可读（保留「回信给这位读者」这一真实需求）。两者缺一都不合适。
+    """
+    try:
+        comment = await session.get(Comment, uuid.UUID(comment_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="非法 ID")
+    if comment is None:
+        raise HTTPException(status_code=404, detail="评论不存在")
+    return ok(
+        {
+            "id": str(comment.id),
+            "author_name": comment.author_name,
+            "author_email": comment.author_email,
+            "author_site": comment.author_site,
+            "content": comment.content,
+            "created_at": comment.created_at,
+            "parent_id": str(comment.parent_id) if comment.parent_id else None,
+            "reply_to_name": comment.reply_to_name or "",
+            "is_author": comment.is_author,
+            "is_pinned": comment.is_pinned,
+            "status": comment.status,
+            "ip_address": comment.ip_address,
         }
     )
 

@@ -229,6 +229,12 @@
   .btn-ghost {
     @apply btn border-border hover:border-accent hover:text-accent;
   }
+  /* 危险操作按钮（删除确认等）：用 error 的淡底 + 描边，而不是实心红底。
+     实心红底需要一个「错误色之上的反色文字」token，三套主题各要一份；
+     淡底描边无需新 token，且在三套主题下对比度都稳定。 */
+  .btn-danger {
+    @apply btn border-error bg-error/10 text-error hover:bg-error/20;
+  }
   /* 尺寸修饰放在最后，确保覆盖上面的默认内边距 */
   .btn-sm {
     @apply px-3 py-1.5 text-xs;

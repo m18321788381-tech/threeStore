@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Skeleton } from "@/components/common/Skeleton";
 import { TablePager } from "@/components/common/TablePager";
 import { cn, formatDateTime } from "@/lib/utils";
@@ -31,6 +32,7 @@ export function CommentsPanel({ initialStatus }: { initialStatus?: number }) {
     initialStatus === undefined ? 0 : initialStatus
   );
   const [page, setPage] = useState(1);
+  const [pendingDelete, setPendingDelete] = useState<AdminComment | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-comments", status, page],
@@ -49,6 +51,7 @@ export function CommentsPanel({ initialStatus }: { initialStatus?: number }) {
   const remove = useMutation({
     mutationFn: (id: string) => api.deleteComment(id),
     onSuccess: () => {
+      setPendingDelete(null);
       queryClient.invalidateQueries({ queryKey: ["admin-comments"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
     },
@@ -94,6 +97,9 @@ export function CommentsPanel({ initialStatus }: { initialStatus?: number }) {
               <li key={c.id} className="card p-4">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-meta">
                   <span className="font-semibold text-foreground">{c.author_name}</span>
+                  {c.reply_to_name && (
+                    <span className="text-muted">回复 @{c.reply_to_name}</span>
+                  )}
                   {c.is_author && <span className="author-badge">作者</span>}
                   <span className={meta.className}>{meta.label}</span>
                   {c.is_pinned && <span className="badge badge-muted">置顶</span>}
@@ -150,12 +156,7 @@ export function CommentsPanel({ initialStatus }: { initialStatus?: number }) {
                     </button>
                     <button
                       type="button"
-                      disabled={remove.isPending}
-                      onClick={() => {
-                        if (window.confirm("确定删除这条评论？其回复也会一并删除。")) {
-                          remove.mutate(c.id);
-                        }
-                      }}
+                      onClick={() => setPendingDelete(c)}
                       className="row-action-danger"
                     >
                       删除
@@ -169,6 +170,23 @@ export function CommentsPanel({ initialStatus }: { initialStatus?: number }) {
       )}
 
       <TablePager page={result.page} pages={result.pages} onChange={setPage} />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        danger
+        title="删除评论"
+        description={
+          pendingDelete
+            ? `将永久删除 ${pendingDelete.author_name} 的这条评论，不可撤销；它下面的所有回复也会一并删除。若只是想隐藏，改用「驳回」。`
+            : ""
+        }
+        confirmLabel="永久删除"
+        pending={remove.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) remove.mutate(pendingDelete.id);
+        }}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -17,20 +17,30 @@ type Props = {
 
 const TOOLBAR = [
   { label: "H2", wrap: ["\n## ", "\n"], hint: "二级标题" },
-  { label: "粗体", wrap: ["**", "**"], hint: "加粗" },
-  { label: "斜体", wrap: ["*", "*"], hint: "斜体" },
+  { label: "粗体", wrap: ["**", "**"], hint: "加粗（Ctrl/⌘+B）" },
+  { label: "斜体", wrap: ["*", "*"], hint: "斜体（Ctrl/⌘+I）" },
   { label: "代码", wrap: ["\n```ts\n", "\n```\n"], hint: "代码块" },
   { label: "引用", wrap: ["\n> ", "\n"], hint: "引用" },
-  { label: "链接", wrap: ["[", "](https://)"], hint: "链接" },
+  { label: "链接", wrap: ["[", "](https://)"], hint: "链接（Ctrl/⌘+K）" },
   { label: "图片", wrap: ["![alt](", ")"], hint: "图片" },
   { label: "[[链接]]", wrap: ["[[", "]]"], hint: "双向链接" },
   { label: "表格", wrap: ["\n| 列 A | 列 B |\n| --- | --- |\n|  |  |\n", ""], hint: "GFM 表格" },
   { label: "任务", wrap: ["\n- [ ] ", "\n"], hint: "任务列表" },
 ];
 
+/** 编辑器快捷键：只做最常用的三个，避免与浏览器/系统快捷键打架。 */
+const SHORTCUTS: Record<string, [string, string]> = {
+  b: ["**", "**"],
+  i: ["*", "*"],
+  k: ["[", "](https://)"],
+};
+
 export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: Props) {
   const [mode, setMode] = useState<"split" | "edit" | "preview">("split");
   const [uploading, setUploading] = useState(false);
+  // 用 ref 而非 document.getElementById：分屏/预览切换会卸载重建 textarea，
+  // 全局 id 取值可能拿到 null 或过期节点，表现为「工具栏点了没反应」的偶发问题。
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const stats = useMemo(() => {
     const text = value || "";
@@ -54,7 +64,7 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
   }, [value, knownTitles]);
 
   const applyWrap = (before: string, after: string) => {
-    const el = document.getElementById("md-editor") as HTMLTextAreaElement | null;
+    const el = textareaRef.current;
     if (!el) return;
     const start = el.selectionStart;
     const end = el.selectionEnd;
@@ -74,7 +84,7 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
     try {
       const url = await onUpload(file);
       if (url) {
-        const el = document.getElementById("md-editor") as HTMLTextAreaElement | null;
+        const el = textareaRef.current;
         const pos = el?.selectionStart ?? value.length;
         const snippet = `\n![${file.name}](${url})\n`;
         onChange(`${value.slice(0, pos)}${snippet}${value.slice(pos)}`);
@@ -85,6 +95,14 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
   };
 
   const unresolved = wikiTargets.filter((w) => !w.exists);
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+    const pair = SHORTCUTS[event.key.toLowerCase()];
+    if (!pair) return;
+    event.preventDefault();
+    applyWrap(pair[0], pair[1]);
+  };
 
   return (
     <div className="overflow-hidden rounded-panel border border-border">
@@ -138,9 +156,11 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
       <div className={cn("grid", mode === "split" ? "md:grid-cols-2" : "grid-cols-1")}>
         {mode !== "preview" && (
           <textarea
+            ref={textareaRef}
             id="md-editor"
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
             spellCheck={false}
             placeholder="# 从这里开始写…&#10;&#10;支持 GFM 表格、任务列表、删除线；用 [[文章标题]] 建立双向链接。"
             className="h-[620px] w-full resize-none border-0 bg-transparent p-5 font-mono text-[13px] leading-relaxed md:border-r md:border-border"

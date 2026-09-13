@@ -26,6 +26,7 @@ class CommentNode(BaseModel):
     content: str = ""
     created_at: datetime | None = None
     parent_id: str | None = None
+    reply_to_name: str = ""
     is_author: bool = False
     is_pinned: bool = False
     status: int = 0
@@ -47,6 +48,7 @@ class CommentAdminItem(CommentNode):
             content=node.get("content", ""),
             created_at=node.get("created_at"),
             parent_id=node.get("parent_id"),
+            reply_to_name=node.get("reply_to_name", ""),
             is_author=node.get("is_author", False),
             is_pinned=node.get("is_pinned", False),
             status=node.get("status", 0),

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Skeleton } from "@/components/common/Skeleton";
 import { TablePager } from "@/components/common/TablePager";
 import { cn, formatDate } from "@/lib/utils";
@@ -28,16 +29,26 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<number | undefined>(initialStatus);
   const [page, setPage] = useState(1);
+  const [pendingDelete, setPendingDelete] = useState<PostListItem | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-posts", status, page],
     queryFn: () =>
-      api.posts({ page, page_size: 15, ...(status !== undefined ? { status } : {}) }),
+      api.posts({
+        page,
+        page_size: 15,
+        // 「全部」必须显式告诉后端要多状态：不传 status 时公开接口的默认语义是
+        // 「只返回已发布」，此前靠「不传」来表达「全部」，于是后台点「全部」看不到草稿。
+        ...(status !== undefined ? { status } : { all_statuses: true }),
+      }),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api.deletePost(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-posts"] }),
+    onSuccess: () => {
+      setPendingDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
+    },
   });
 
   const toggle = useMutation({
@@ -154,12 +165,7 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
                       </button>
                       <button
                         type="button"
-                        disabled={remove.isPending}
-                        onClick={() => {
-                          if (window.confirm(`确定删除《${post.title}》？此操作不可撤销。`)) {
-                            remove.mutate(post.id);
-                          }
-                        }}
+                        onClick={() => setPendingDelete(post)}
                         className="row-action-danger"
                       >
                         删除
@@ -174,6 +180,23 @@ export function PostsTable({ initialStatus }: { initialStatus?: number }) {
       )}
 
       <TablePager page={result.page} pages={result.pages} onChange={setPage} />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        danger
+        title="删除文章"
+        description={
+          pendingDelete
+            ? `《${pendingDelete.title}》将被永久删除，不可撤销；它的评论与双向链接也会一并删除。如果只是不想公开展示，改用「转草稿」或「归档」。`
+            : ""
+        }
+        confirmLabel="永久删除"
+        pending={remove.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) remove.mutate(pendingDelete.id);
+        }}
+      />
     </div>
   );
 }

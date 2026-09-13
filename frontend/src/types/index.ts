@@ -91,6 +91,8 @@ export interface CommentNode {
   content: string;
   created_at: string | null;
   parent_id: string | null;
+  /** 被回复者昵称，由服务端从父评论推导；用于展示「回复 @某某」 */
+  reply_to_name: string;
   is_author: boolean;
   is_pinned: boolean;
   status: number;
@@ -98,6 +100,7 @@ export interface CommentNode {
 }
 
 export interface AdminComment extends CommentNode {
+  /** 列表接口返回的是掩码值（防批量导出）；需要完整邮箱走单条接口 */
   author_email: string;
   ip_address: string;
   post_slug: string;

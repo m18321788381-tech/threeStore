@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { copyToClipboard } from "@/lib/utils";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Skeleton } from "@/components/common/Skeleton";
 import type { MediaItem, Paginated } from "@/types";
 
@@ -87,6 +88,7 @@ export function MediaPanel() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState("");
   const [error, setError] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<MediaItem | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["media"],
@@ -104,7 +106,10 @@ export function MediaPanel() {
 
   const remove = useMutation({
     mutationFn: (id: string) => api.deleteMedia(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["media"] }),
+    onSuccess: () => {
+      setPendingDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["media"] });
+    },
   });
 
   const result = (data || { items: [], total: 0 }) as Paginated<MediaItem>;
@@ -196,9 +201,7 @@ export function MediaPanel() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.confirm("删除这张图片？")) remove.mutate(item.id);
-                    }}
+                    onClick={() => setPendingDelete(item)}
                     className="row-action-danger text-[11px]"
                   >
                     删除
@@ -209,6 +212,23 @@ export function MediaPanel() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        danger
+        title="删除图片"
+        description={
+          pendingDelete
+            ? `将删除「${pendingDelete.filename}」。注意：媒体与文章之间尚未建立引用关系，系统无法判断它是否被已发布文章使用——如果被引用，相关文章的图片会变成破图。`
+            : ""
+        }
+        confirmLabel="永久删除"
+        pending={remove.isPending}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) remove.mutate(pendingDelete.id);
+        }}
+      />
     </div>
   );
 }

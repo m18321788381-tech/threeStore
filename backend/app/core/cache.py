@@ -54,6 +54,22 @@ async def cache_set(key: str, value: str, ttl: int) -> None:
         pass
 
 
+async def cache_delete(*keys: str) -> None:
+    """删除缓存键；无 Redis 时为无操作。
+
+    这是 SEO 产物失效的**正确入口**。历史上只用 publish 广播失效事件，
+    但仓库内并无订阅者，导致缓存永不失效、最长滞后 SEO_CACHE_TTL 秒。
+    直接删键不依赖任何后台进程，立即生效。
+    """
+    r = get_redis()
+    if not r:
+        return
+    try:
+        await r.delete(*keys)
+    except Exception:
+        pass
+
+
 async def publish(channel: str, message: str = "") -> None:
     """发布到频道；无 Redis 时为无操作。"""
     r = get_redis()

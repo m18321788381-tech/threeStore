@@ -12,6 +12,7 @@ const items = [
   { href: "/admin/categories", label: "分类", icon: "▤" },
   { href: "/admin/tags", label: "标签", icon: "#" },
   { href: "/admin/media", label: "媒体", icon: "▣" },
+  { href: "/admin/account", label: "账号", icon: "◍" },
 ];
 
 /** 后台侧栏：对齐设计稿 A-01 —— 弱底色栏 + 实心强调色选中态。 */

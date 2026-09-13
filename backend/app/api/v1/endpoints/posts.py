@@ -24,9 +24,10 @@ from app.models.post import Post
 from app.models.tag import Tag
 from app.schemas import PostCreate, PostUpdate, ok, paginate
 from app.services.links import render_post_content, sync_post_links
+from app.services.neighbours import find_neighbours
 from app.services.redirects import record_slug_change
 from app.services.serializers import post_detail, post_list_item
-from app.services.seo import notify_seo_changed
+from app.services.seo import invalidate_seo_cache
 from app.services.slug import slugify_title, unique_slug
 
 router = APIRouter(prefix="/posts", tags=["posts"])
@@ -79,14 +80,27 @@ async def list_posts(
     tag: str | None = Query(None, description="标签 slug"),
     sort: str = Query("newest", pattern="^(newest|oldest|popular)$"),
     status_filter: int | None = Query(None, alias="status", ge=0, le=2),
+    all_statuses: bool = Query(
+        False,
+        description=(
+            "仅管理员有效：置 true 时不按状态过滤，返回草稿/已发布/归档全部。"
+            "非管理员传了也无效（回落为只返回已发布）。"
+        ),
+    ),
     session: AsyncSession = Depends(get_db),
     user=Depends(optional_user),
 ):
     query = _base_query()
 
+    # 历史 bug：管理员在后台点「全部」时不带 status，被下面的 else 分支强制成
+    # PUBLISHED，于是「全部」实际只显示已发布。这里用显式的 all_statuses 开关表达
+    # 「我（管理员）确实要全部」，而不是靠「没传 status」去猜意图——公开接口默认语义
+    # （只返回已发布）因此保持不变。
     is_admin = user is not None and user.role == 0
     if status_filter is not None and is_admin:
         query = query.where(Post.status == status_filter)
+    elif is_admin and all_statuses:
+        pass  # 管理员显式要求全部状态，不加过滤
     else:
         query = query.where(Post.status == PostStatus.PUBLISHED)
 
@@ -99,10 +113,12 @@ async def list_posts(
 
     # 置顶文章始终最前，其余按所选排序。
     # 置顶只作用于列表页；归档页与 RSS 保持纯时序，避免「时间线错乱」的观感。
+    # nulls_last() 是为「管理员看全部状态」准备的：草稿的 published_at 为空，
+    # 而 PostgreSQL 的 DESC 默认把 NULL 排在最前，会把草稿顶到列表头部。
     secondary = {
-        "oldest": (Post.published_at.asc(),),
-        "popular": (Post.view_count.desc(), Post.published_at.desc()),
-    }.get(sort, (Post.published_at.desc(),))
+        "oldest": (Post.published_at.asc().nulls_last(),),
+        "popular": (Post.view_count.desc(), Post.published_at.desc().nulls_last()),
+    }.get(sort, (Post.published_at.desc().nulls_last(),))
     query = query.order_by(Post.is_pinned.desc(), *secondary)
 
     total = (
@@ -181,48 +197,17 @@ async def get_post(slug: str, session: AsyncSession = Depends(get_db)):
 
     post: Post = row[0]
     comment_count = row[1] or 0
-    published_at = post.published_at or post.created_at
 
-    prev_row = (
-        await session.execute(
-            select(Post.id, Post.slug, Post.title)
-            .where(
-                Post.status == PostStatus.PUBLISHED,
-                Post.published_at < published_at,
-            )
-            .order_by(Post.published_at.desc())
-            .limit(1)
-        )
-    ).first()
-    next_row = (
-        await session.execute(
-            select(Post.id, Post.slug, Post.title)
-            .where(
-                Post.status == PostStatus.PUBLISHED,
-                Post.published_at > published_at,
-            )
-            .order_by(Post.published_at.asc())
-            .limit(1)
-        )
-    ).first()
-
-    def _ref(row_) -> dict | None:
-        """把 (id, slug, title) 装配成 RefOut。
-
-        历史 bug：此前查询只取 (slug, title)，却把 id 与 slug 都赋成了 row_[0]，
-        导致 `RefOut.id` 实际返回的是 slug。前端一旦用 prev.id 做 key 或跳转就会拿到 slug，
-        故查询补上 Post.id，这里按 (id, slug, title) 三列取值。
-        """
-        if not row_:
-            return None
-        return {"id": str(row_[0]), "slug": row_[1], "name": row_[2]}
+    # 相邻文章（上一篇/下一篇）查询已抽到 services/neighbours.py：
+    # 原先内联在这里导致无法单测，而它恰好有一个「同一时刻互相跳过」的真实缺陷。
+    prev_ref, next_ref = await find_neighbours(session, post)
 
     return ok(
         post_detail(
             post,
             toc=_parse_toc(post.toc),
-            prev=_ref(prev_row),
-            next_=_ref(next_row),
+            prev=prev_ref,
+            next_=next_ref,
             comment_count=comment_count,
         )
     )
@@ -320,7 +305,7 @@ async def create_post(
     await _render_and_sync(session, post)
 
     await session.commit()
-    await notify_seo_changed()
+    await invalidate_seo_cache()
     return ok({"id": str(post.id), "slug": post.slug, "status": post.status})
 
 
@@ -376,7 +361,7 @@ async def update_post(
     await session.flush()
     await _render_and_sync(session, post)
     await session.commit()
-    await notify_seo_changed()
+    await invalidate_seo_cache()
     return ok({"id": str(post.id), "slug": post.slug, "status": post.status})
 
 
@@ -405,7 +390,7 @@ async def publish_post(
     await session.flush()
     await sync_post_links(session, post)  # 上线后草稿不参与图谱，需重建关系
     await session.commit()
-    await notify_seo_changed()
+    await invalidate_seo_cache()
     return ok({"id": str(post.id), "status": post.status})
 
 
@@ -420,7 +405,7 @@ async def delete_post(
         raise HTTPException(status_code=404, detail="文章不存在")
     await session.delete(post)  # post_links / comments 由 FK CASCADE 清理
     await session.commit()
-    await notify_seo_changed()
+    await invalidate_seo_cache()
     return ok({"id": post_id}, message="已删除")
 
 
