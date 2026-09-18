@@ -29,6 +29,7 @@ export const siteConfig = {
     { href: "/categories", label: "分类" },
     { href: "/tags", label: "标签" },
     { href: "/garden", label: "数字花园" },
+    { href: "/reading", label: "稍后读" },
     { href: "/about", label: "关于" },
   ],
   social: [

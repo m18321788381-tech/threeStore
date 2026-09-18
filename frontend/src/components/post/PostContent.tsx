@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { copyToClipboard } from "@/lib/utils";
+import { enhanceContent } from "@/lib/markdownEnhance";
 
 /**
  * 正文容器。
@@ -23,8 +24,14 @@ export function PostContent({ html }: { html: string }) {
       if (pre.dataset.enhanced === "1") return;
       pre.dataset.enhanced = "1";
 
+      /* 图表块不套代码块外壳：它渲染成图之后既没有语言标签的意义，
+         复制按钮复制出来的是 SVG 源码而不是图形，对读者没有价值。 */
+      if (pre.classList.contains("mermaid-block")) return;
+
       const code = pre.querySelector("code");
       const langMatch = /language-([\w+#.-]+)/.exec(code?.className || "");
+      // 文件名来自服务端注入的 data-file（```python title=app.py）
+      const filename = pre.dataset.file || "";
 
       const wrapper = document.createElement("div");
       wrapper.className = "code-block";
@@ -34,10 +41,11 @@ export function PostContent({ html }: { html: string }) {
       const bar = document.createElement("div");
       bar.className = "code-block__bar";
 
-      if (langMatch) {
+      // 左侧：文件名优先于语言标签（文件名信息量更大）
+      if (filename || langMatch) {
         const tag = document.createElement("span");
-        tag.className = "code-block__lang";
-        tag.textContent = langMatch[1];
+        tag.className = filename ? "code-block__file" : "code-block__lang";
+        tag.textContent = filename || langMatch?.[1] || "";
         bar.appendChild(tag);
       }
 
@@ -57,6 +65,11 @@ export function PostContent({ html }: { html: string }) {
       bar.appendChild(btn);
       wrapper.appendChild(bar);
     });
+
+    // ---- Mermaid 图表 + KaTeX 公式 ----
+    // 两者都按需加载（见 lib/markdownEnhance.ts），正文里没有对应产物时
+    // 不会产生任何额外下载。
+    const cleanupEnhance = enhanceContent(root);
 
     // ---- 图片增强：懒加载 + 灯箱 ----
     // 技术文章的截图往往是全文最大的资源，且读者需要看清细节。
@@ -91,6 +104,7 @@ export function PostContent({ html }: { html: string }) {
 
     return () => {
       cancelled = true;
+      cleanupEnhance();
       zoom?.detach();
     };
   }, [html]);

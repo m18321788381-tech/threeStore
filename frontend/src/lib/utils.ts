@@ -29,7 +29,9 @@ export function formatDate(value?: string | null): string {
   return dateFormatter.format(d).replace(/\//g, "-");
 }
 
-export function formatDateTime(value?: string | null): string {
+// 也接受 number（毫秒时间戳）：本地存储里的时间戳直接传数值最稳妥，
+// 转成字符串再解析会引入歧义 —— new Date("0") 是 2000 年而非 1970 年。
+export function formatDateTime(value?: string | number | null): string {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";

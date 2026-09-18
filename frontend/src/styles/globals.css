@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 @import "./pygments.css";
+/* KaTeX 样式：@font-face 是懒加载的，没有公式的页面不会下载字体文件 */
+@import "katex/dist/katex.min.css";
 
 /* ------------------------------------------------------------------ 设计系统 */
 /* 对应设计文档 §6.1：内容优先、阅读友好、克制留白 */
@@ -384,8 +386,10 @@
 /* ------------------------------------------------------- Markdown 正文排版 */
 .prose-blog {
   max-width: 100%;
-  font-size: 17px;
-  line-height: 1.8;
+  /* 字号与行距由「排版」面板写入 CSS 变量（见 lib/reading.ts）。
+     这里的 17px / 1.8 是默认值，保证没跑 JS 或未设置时排版不变。 */
+  font-size: var(--reading-font-size, 17px);
+  line-height: var(--reading-line-height, 1.8);
 }
 .prose-blog > * + * {
   margin-top: 1.15em;
@@ -628,6 +632,20 @@
   letter-spacing: 0.04em;
   color: var(--fg-muted);
 }
+/* 文件名沿用代码字体、不做大写转换（文件名大小写有意义） */
+.code-block__file {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: theme("fontFamily.mono");
+  font-size: 11px;
+  color: var(--fg-muted);
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .code-block__copy {
   border: 1px solid var(--border);
   background: var(--bg);
@@ -641,6 +659,139 @@
 .code-block__copy:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* ------------------------------------------------------- 文章容器与版心 */
+/* 版心宽度由「排版」面板写入 --reading-measure；默认 720px 与原 max-w-content 一致。
+   用 min() 保证小屏下不溢出：读者把版心调宽后，窄屏仍按容器宽度显示。 */
+.post-article {
+  max-width: min(var(--reading-measure, 720px), 100%);
+}
+
+/* ----------------------------------------------------- 阅读位置与工具栏 */
+/* 「上次读到 x%」横幅：默认不出现，只有确实存在中间位置时才渲染 */
+.resume-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--accent-soft);
+}
+
+/* 阅读工具栏：稍后读 / 排版 / 列表入口 */
+.reading-tools {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.reading-tools__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  background: var(--card);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.reading-tools__btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+/* 已收藏 / 已改过排版：用强调色标出当前状态 */
+.reading-tools__btn.is-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.reading-prefs {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 30;
+  display: grid;
+  gap: 0.6rem;
+  width: min(20rem, 100%);
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 10px 30px -12px rgb(15 23 42 / 0.18);
+}
+
+/* ------------------------------------------------- 代码块：指定行高亮 */
+/* Pygments 的 hl_lines 产出 <span class="hll">，颜色由 pygments.css 给；
+   这里补一条左侧竖线，让高亮行在没有底色对比时也一眼可辨 */
+.prose-blog pre code .hll {
+  display: inline-block;
+  width: 100%;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* --------------------------------------------------------- Mermaid 图表 */
+/* 服务端只输出 <pre class="mermaid-block">，前端按需加载 mermaid 后替换为 SVG */
+.prose-blog .mermaid-block {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  background: var(--card) !important;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.2em 1em;
+}
+.prose-blog .mermaid-block svg {
+  max-width: 100%;
+  height: auto;
+}
+/* 图表语法写错：保留源码并把错误外显，作者在页面上就能看到问题 */
+.prose-blog .mermaid-block[data-error="1"] {
+  display: block;
+  border-color: var(--error);
+}
+.prose-blog .mermaid-block[data-error="1"]::before {
+  content: "图表语法有误，已按原始代码展示";
+  display: block;
+  margin-bottom: 0.6em;
+  font-size: 0.8em;
+  color: var(--error);
+}
+
+/* --------------------------------------------------------- 数学公式 */
+.prose-blog .math-block {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.3em;
+}
+/* 行内公式不应把行高撑开；长公式允许横向滚动而不是撑破版心 */
+.prose-blog .math-inline {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  vertical-align: baseline;
+}
+/* 公式渲染失败时标红，而不是留下无法察觉的原始 LaTeX */
+.prose-blog [data-error="1"].math-inline,
+.prose-blog [data-error="1"].math-block {
+  color: var(--error);
+}
+.katex-display {
+  margin: 0;
 }
 
 /* ------------------------------------------- 数字花园：[[双向链接]] 行内样式 */

@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 
 import bleach
 from markdown_it import MarkdownIt
+from markdown_it.common.utils import escapeHtml
+from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 from mdit_py_plugins.tasklists import tasklists_plugin
 from pygments import highlight as pygments_highlight
@@ -50,6 +52,24 @@ ATTR_RE_FMT = r"""\b{}\s*=\s*["']([^"']*)["']"""
 PLACEHOLDER_FMT = "%%WIKILINK{idx}%%"
 PLACEHOLDER_RE = re.compile(r"%%WIKILINK(\d+)%%")
 
+# ---- 围栏代码块的 info 串附加属性 -----------------------------------------
+# 形如 ```python title=app.py {1,3-5} ：
+#   title=/filename=   → 代码块标题栏显示文件名
+#   {1,3-5}            → 高亮指定行（逗号分隔，支持区间）
+# 识别不了的写法一律忽略，绝不因为附加属性不认识就把整块代码丢掉。
+FENCE_FILENAME_RE = re.compile(r"\b(?:title|filename)=(\"[^\"]*\"|'[^']*'|\S+)", re.I)
+# 裸文件名兜底（```python app.py）：必须是带扩展名的文件样式，
+# 否则 ```js strict 里的 strict 会被误当成文件名。
+FENCE_BARE_FILE_RE = re.compile(r"^[\w./-]+\.[A-Za-z0-9]{1,8}$")
+FENCE_HL_RE = re.compile(r"\{([^}]*)\}")
+
+# ---- 数学公式与图表：容器标记 ---------------------------------------------
+# KaTeX / Mermaid 都在前端渲染。服务端只产出稳定的 class 容器，
+# 这样 bleach 白名单可以最小放行，前端也有明确的挂载点。
+MATH_INLINE_CLASS = "math-inline"
+MATH_BLOCK_CLASS = "math-block"
+MERMAID_CLASS = "mermaid-block"
+
 ALLOWED_TAGS = [
     "a", "abbr", "b", "blockquote", "br", "code", "del", "details", "div", "em",
     "figcaption", "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img",
@@ -63,8 +83,13 @@ ALLOWED_ATTRS = {
     "input": ["type", "checked", "disabled", "class"],
     "code": ["class"],
     "span": ["class", "title", "data-wiki"],
-    "div": ["class"],
-    "pre": ["class"],
+    # div 上的 id 只为带编号的公式块服务（$$...$$ (eq1) 的跳转锚点）。
+    # 放行它是安全的：渲染器关闭了 html，div 只能由数学公式规则产出，
+    # 且 id 值经 label_normalizer 收敛为 [A-Za-z0-9_-]，不含可控字符。
+    "div": ["class", "id"],
+    # data-file / data-hl 是围栏代码块的标题栏与行高亮信息，值由服务端从
+    # 正文 info 串解析后转义写入，前端据此渲染（不再二次解析 HTML 文本）。
+    "pre": ["class", "data-file", "data-hl"],
     "th": ["colspan", "rowspan", "align", "style"],
     "td": ["colspan", "rowspan", "align", "style"],
     "ol": ["start"],
@@ -88,16 +113,145 @@ class RenderResult:
     reading_time: int = 1
 
 
+# ------------------------------------------------------- 围栏代码块附加属性 ---
+def _unquote(value: str) -> str:
+    """去掉 title="x" 两侧的引号（含单/双引号）。"""
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
+def parse_fence_meta(attrs: str) -> tuple[str, list[int]]:
+    """从围栏 info 串的附加部分解析出 (文件名, 高亮行号)。
+
+    支持两种写法：
+      ```python title=app.py {1,3-5}   → ("app.py", [1, 3, 4, 5])
+      ```python app.py {2}             → ("app.py", [2])
+
+    解析失败一律返回空值，调用方按「无标题栏、无高亮」正常渲染代码，
+    绝不因为附加属性写错而丢内容。
+    """
+    text = (attrs or "").strip()
+    if not text:
+        return "", []
+
+    filename = ""
+    hl_lines: list[int] = []
+
+    # 1) 显式 title=/filename=（值可带引号，也可不带）
+    m = FENCE_FILENAME_RE.search(text)
+    if m:
+        filename = _unquote(m.group(1)).strip()
+        text = text[: m.start()] + " " + text[m.end() :]
+
+    # 2) 行高亮 {1,3-5}
+    m = FENCE_HL_RE.search(text)
+    if m:
+        for part in m.group(1).split(","):
+            part = part.strip()
+            if not part:
+                continue
+            if "-" in part:
+                lo, _, hi = part.partition("-")
+                if lo.strip().isdigit() and hi.strip().isdigit():
+                    start, stop = int(lo), int(hi)
+                    if start > stop:
+                        start, stop = stop, start
+                    # 上限兜住极端区间（如 {1-999999}）：代码块超过 500 行的高亮
+                    # 已无阅读意义，截断即可，避免把整块代码都涂成高亮色。
+                    hl_lines.extend(range(start, min(stop, start + 500) + 1))
+            elif part.isdigit():
+                hl_lines.append(int(part))
+        text = text[: m.start()] + " " + text[m.end() :]
+
+    # 3) 裸文件名兜底：只在没有显式 title 时尝试
+    if not filename:
+        for word in text.split():
+            if FENCE_BARE_FILE_RE.match(word):
+                filename = word
+                break
+
+    return filename, sorted({n for n in hl_lines if n > 0})
+
+
 # --------------------------------------------------------------- 代码高亮 ---
 def _highlight_code(code: str, lang: str, attrs: str) -> str:
-    """pygments 高亮；无法识别语言时降级为纯文本。"""
+    """pygments 高亮；无法识别语言时降级为纯文本。
+
+    两处特殊处理：
+      1. mermaid 交给前端渲染：这里只产出「原样代码 + 容器标记」，
+         图表由浏览器按需加载 mermaid 绘制，服务端不做图渲染。
+      2. 行高亮用 Pygments 的 hl_lines，产出 <span class="hll">，
+         颜色由已有的 pygments.css 提供，浅/暗主题都覆盖到了。
+
+    返回值以 `<pre` 开头时，markdown-it 会原样透传、不再包一层
+    `<pre><code>`（见 markdown_it/renderer.py 的 fence 规则）。因此这里
+    直接产出完整的外层标签，标题栏与高亮行信息可以内联写死在属性上，
+    不需要事后再去按顺序对齐 <pre> —— 那种对齐一旦遇到缩进代码块或
+    无语言围栏就会整体错位。
+    """
     lang = (lang or "").strip().lower()
+
+    if lang == "mermaid":
+        # 源码放进 <code> 的文本节点里：前端读 textContent 拿到原文，
+        # 既不需要在属性里转义大段图形源码，也不会有引号/尖括号的转义歧义。
+        return (
+            f'<pre class="{MERMAID_CLASS}"><code class="language-mermaid">'
+            f"{escapeHtml(code)}</code></pre>"
+        )
+
+    filename, hl_lines = parse_fence_meta(attrs)
     try:
         lexer = get_lexer_by_name(lang, stripall=True) if lang else guess_lexer(code)
     except ClassNotFound:
         lexer = TextLexer(stripall=True)
-    formatter = HtmlFormatter(nowrap=True, cssclass="highlight")
-    return pygments_highlight(code, lexer, formatter).rstrip("\n")
+    # hl_lines 必须给列表；给 None 会被 pygments 判为非法类型
+    formatter = HtmlFormatter(
+        nowrap=True,
+        cssclass="highlight",
+        hl_lines=hl_lines,
+    )
+    body = pygments_highlight(code, lexer, formatter).rstrip("\n")
+
+    # 语言标签沿用 markdown-it 的 language-<lang> 约定，保持前端既有逻辑可用
+    # escapeHtml 已包含双引号转义，无需再传 quote 参数
+    code_attrs = f' class="language-{escapeHtml(lang)}"' if lang else ""
+    pre_attrs = ""
+    if filename:
+        pre_attrs += f' data-file="{escapeHtml(filename)}"'
+    if hl_lines:
+        pre_attrs += f' data-hl="{",".join(str(n) for n in hl_lines)}"'
+    return f"<pre{pre_attrs}><code{code_attrs}>{body}</code></pre>"
+
+
+# ----------------------------------------------------------- 数学公式渲染 ---
+def _register_math_rules(md: MarkdownIt) -> None:
+    """覆盖 dollarmath 的默认渲染规则，产出前端可识别的稳定容器。
+
+    默认规则会额外包一层 `<span class="math inline">`，并且把公式内容
+    以 HTML 转义形态输出。前端要拿到**原始 LaTeX 文本**交给 KaTeX，
+    所以这里统一改成单层容器：内容仍是转义的 HTML，
+    浏览器读 textContent 即可还原成原始 LaTeX。
+    """
+
+    def render_inline(self, tokens, idx, options, env):
+        content = escapeHtml(str(tokens[idx].content).strip())
+        return f'<span class="{MATH_INLINE_CLASS}">{content}</span>'
+
+    def render_block(self, tokens, idx, options, env):
+        content = escapeHtml(str(tokens[idx].content).strip())
+        return f'<div class="{MATH_BLOCK_CLASS}">{content}</div>\n'
+
+    def render_block_label(self, tokens, idx, options, env):
+        # 带编号的公式：$$...$$ (eq1)。编号加前缀避免与标题锚点撞 id。
+        anchor = escapeHtml(f"eq-{tokens[idx].info}")
+        content = escapeHtml(str(tokens[idx].content).strip())
+        return f'<div class="{MATH_BLOCK_CLASS}" id="{anchor}">{content}</div>\n'
+
+    md.add_render_rule("math_inline", render_inline)
+    md.add_render_rule("math_inline_double", render_block)
+    md.add_render_rule("math_block", render_block)
+    md.add_render_rule("math_block_label", render_block_label)
 
 
 def _build_parser() -> MarkdownIt:
@@ -109,7 +263,19 @@ def _build_parser() -> MarkdownIt:
         .enable(["table", "strikethrough"])
         .use(tasklists_plugin, enabled=True, label=True, label_after=False)
         .use(footnote_plugin)
+        # 行内公式的严格模式：不允许 $ 紧邻空白或数字。
+        # 这一条是必须的——否则 "echo $PATH and $HOME" 会被当成公式，
+        # "$5 到 $10" 这类金额也会被误吞。技术博客里 shell 变量与价格
+        # 出现频率远高于行内公式，宁可要求作者写成 $\alpha$ 这种紧凑形式。
+        .use(
+            dollarmath_plugin,
+            allow_space=False,
+            allow_digits=False,
+            allow_labels=True,
+            label_normalizer=lambda label: re.sub(r"[^A-Za-z0-9_-]", "-", label),
+        )
     )
+    _register_math_rules(md)
     return md
 
 

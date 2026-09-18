@@ -7,6 +7,8 @@ import { formatDate, readingTimeLabel } from "@/lib/utils";
 import { PostContent } from "@/components/post/PostContent";
 import { ReadingProgress } from "@/components/post/ReadingProgress";
 import { PostPager } from "@/components/post/PostPager";
+import { ReadingTools } from "@/components/post/ReadingTools";
+import { MobileTOC } from "@/components/post/MobileTOC";
 import { ViewCounter } from "@/components/post/ViewCounter";
 import { TOC } from "@/components/post/TOC";
 import { CommentSection } from "@/components/comment/CommentSection";
@@ -113,7 +115,7 @@ export default async function PostPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <article className="min-w-0 max-w-content">
+      <article className="post-article min-w-0">
         <Breadcrumb
           items={[
             ...(post.category
@@ -167,7 +169,20 @@ export default async function PostPage({ params }: Props) {
           )}
         </header>
 
+        {/* 窄屏没有侧栏，目录必须放在正文之前才用得上 */}
+        {post.toc?.length ? (
+          <div className="mb-6">
+            <MobileTOC items={post.toc} />
+          </div>
+        ) : null}
+
         <PostContent html={post.content_html} />
+
+        <ReadingTools
+          slug={post.slug}
+          title={post.title}
+          summary={post.summary}
+        />
 
         <ViewCounter slug={post.slug} />
 
