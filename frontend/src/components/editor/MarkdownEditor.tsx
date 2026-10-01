@@ -38,6 +38,7 @@ const SHORTCUTS: Record<string, [string, string]> = {
 export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: Props) {
   const [mode, setMode] = useState<"split" | "edit" | "preview">("split");
   const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
   // 用 ref 而非 document.getElementById：分屏/预览切换会卸载重建 textarea，
   // 全局 id 取值可能拿到 null 或过期节点，表现为「工具栏点了没反应」的偶发问题。
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -78,20 +79,85 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
     });
   };
 
-  const handleFile = async (file: File) => {
+  /**
+   * 批量插入图片（文件选择器 / 粘贴截图 / 拖拽共用同一条路径）。
+   *
+   * 为什么在这里自己累积 buffer 与 cursor，而不是每轮重新读 value：
+   * 多张图是「上传一张 → onChange 一次」的串行流程，第二轮进循环时 props 里的
+   * value 仍是上一轮渲染的旧值（React 状态尚未回流），直接拿它切片会把前一张图的
+   * 结果整段覆盖掉。自己累积则天然串行正确。
+   */
+  const handleFiles = async (files: File[]) => {
     if (!onUpload) return;
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (!images.length) return;
+
     setUploading(true);
+    let buffer = value;
+    let cursor = textareaRef.current?.selectionStart ?? value.length;
     try {
-      const url = await onUpload(file);
-      if (url) {
-        const el = textareaRef.current;
-        const pos = el?.selectionStart ?? value.length;
+      for (const file of images) {
+        const url = await onUpload(file);
+        // 单张失败（超出体积上限、类型不符）不该中断其余图片的上传
+        if (!url) continue;
         const snippet = `\n![${file.name}](${url})\n`;
-        onChange(`${value.slice(0, pos)}${snippet}${value.slice(pos)}`);
+        buffer = buffer.slice(0, cursor) + snippet + buffer.slice(cursor);
+        cursor += snippet.length;
+        onChange(buffer);
       }
     } finally {
       setUploading(false);
+      // 光标落到最后一张图之后，方便接着写图注
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.selectionStart = cursor;
+        el.selectionEnd = cursor;
+      });
     }
+  };
+
+  /** 粘贴截图：截图工具里 Ctrl+V 直接落库，省掉「先存盘再选文件」 */
+  const onPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onUpload) return;
+    const images = Array.from(event.clipboardData?.files || []).filter((f) =>
+      f.type.startsWith("image/")
+    );
+    if (!images.length) return;
+    // 不拦截的话，部分环境会把文件当纯文本处理，往正文里插一行 "image.png"
+    event.preventDefault();
+    void handleFiles(images);
+  };
+
+  /** dragover 阶段拿不到 File 对象，只能靠 types 判断是否携带文件 */
+  const carriesFiles = (event: React.DragEvent<HTMLDivElement>) =>
+    Array.from(event.dataTransfer?.types || []).includes("Files");
+
+  const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!onUpload || !carriesFiles(event)) return;
+    // 不 preventDefault，浏览器会拒绝把 drop 事件派发过来
+    event.preventDefault();
+    if (!dragging) setDragging(true);
+  };
+
+  const onDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    // dragleave 在移过子元素时也会触发，靠 relatedTarget 判断是否真的离开了容器
+    const next = event.relatedTarget as Node | null;
+    if (next && event.currentTarget.contains(next)) return;
+    setDragging(false);
+  };
+
+  const onDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!onUpload) return;
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (!files.some((f) => f.type.startsWith("image/"))) {
+      setDragging(false);
+      return;
+    }
+    event.preventDefault();
+    setDragging(false);
+    void handleFiles(files);
   };
 
   const unresolved = wikiTargets.filter((w) => !w.exists);
@@ -105,7 +171,15 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
   };
 
   return (
-    <div className="overflow-hidden rounded-panel border border-border">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-panel border transition-colors",
+        dragging ? "border-accent" : "border-border"
+      )}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       {/* 工具栏 */}
       <div className="flex flex-wrap items-center gap-1 border-b border-border bg-surface/60 px-2 py-1.5">
         {TOOLBAR.map((item) => (
@@ -121,15 +195,19 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
         ))}
 
         {onUpload && (
-          <label className="ml-1 cursor-pointer rounded px-2 py-1 text-xs text-muted hover:bg-background hover:text-accent">
+          <label
+            title="也可以直接把图片文件拖进来，或 Ctrl/⌘+V 粘贴截图"
+            className="ml-1 cursor-pointer rounded px-2 py-1 text-xs text-muted hover:bg-background hover:text-accent"
+          >
             {uploading ? "上传中…" : "插入图片"}
             <input
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleFile(file);
+                const files = Array.from(e.target.files || []);
+                if (files.length) void handleFiles(files);
                 e.target.value = "";
               }}
             />
@@ -161,8 +239,9 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={onKeyDown}
+            onPaste={onPaste}
             spellCheck={false}
-            placeholder="# 从这里开始写…&#10;&#10;支持 GFM 表格、任务列表、删除线；用 [[文章标题]] 建立双向链接。"
+            placeholder="# 从这里开始写…&#10;&#10;支持 GFM 表格、任务列表、删除线；用 [[文章标题]] 建立双向链接。&#10;&#10;截图可直接 Ctrl/⌘+V 粘贴，图片文件也可以拖进来。"
             className="h-[620px] w-full resize-none border-0 bg-transparent p-5 font-mono text-[13px] leading-relaxed md:border-r md:border-border"
           />
         )}
@@ -202,6 +281,13 @@ export function MarkdownEditor({ value, onChange, knownTitles = [], onUpload }: 
           )}
         </span>
       </div>
+
+      {/* 拖拽遮罩：pointer-events-none 让 drop 事件仍落在容器上 */}
+      {dragging && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-accent-soft/80">
+          <p className="text-sm font-medium text-accent">松开鼠标即可上传图片</p>
+        </div>
+      )}
     </div>
   );
 }
