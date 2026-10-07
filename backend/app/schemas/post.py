@@ -88,6 +88,22 @@ class PostDetail(PostListItem):
     next: RefOut | None = None
 
 
+class PostPreviewIn(BaseModel):
+    """后台编辑器实时预览入参（尚未保存的正文也要能预览）。"""
+
+    content_md: str = ""
+    # 正在编辑的文章 id；新建文章时为空。用于忽略 [[自引用]]
+    post_id: str | None = None
+
+
+class PostPreviewOut(BaseModel):
+    """预览结果：与发布落库的 content_html / toc / reading_time 同源。"""
+
+    html: str = ""
+    toc: list[TocItemOut] = Field(default_factory=list)
+    reading_time: int = 1
+
+
 class PostOut(ORMModel):
     id: str
     title: str

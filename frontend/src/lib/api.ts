@@ -9,6 +9,7 @@ import type {
   ArchiveGroup,
   CommentNode,
   GraphData,
+  TocItem,
   LinkData,
   StatsOverview,
   MediaItem,
@@ -176,6 +177,16 @@ export const api = {
   deletePost: (id: string) => request<{ id: string }>("DELETE", `/posts/${id}`),
   publishPost: (id: string, status: number) =>
     request<{ id: string; status: number }>("POST", `/posts/${id}/publish`, { status }),
+  /**
+   * 编辑器实时预览：后端按**发布时的同一条渲染管线**渲染，返回 html/toc/阅读时长。
+   * post_id 用于忽略 [[自引用]]，新建文章时传 null。
+   */
+  previewPost: (body: { content_md: string; post_id?: string | null }) =>
+    request<{ html: string; toc: TocItem[]; reading_time: number }>(
+      "POST",
+      "/posts/preview",
+      body
+    ),
 
   /* 分类 / 标签 */
   categories: () => request<Category[]>("GET", "/categories"),

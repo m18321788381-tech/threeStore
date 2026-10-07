@@ -5,10 +5,11 @@
     错误就被固化进数据库，要重新保存文章才能修好。因此这里的每条断言
     都对应一个「写错了会静默藏在正文里、且很难被发现」的行为。
 
-覆盖三块新能力：
+覆盖四块新能力：
     1. 围栏代码块的附加属性（文件名 / 行高亮）
     2. Mermaid 图表块的容器标记
     3. 数学公式的严格美元规则（不能误吞 shell 变量与金额）
+    4. 图片图注（title → <figure><figcaption>，且不得双重转义）
 """
 from __future__ import annotations
 
@@ -220,3 +221,58 @@ def test_indented_code_block_unaffected():
     html = render_markdown("    indented code\n").html
     assert "indented code" in html
     assert "data-file" not in html
+
+
+# ------------------------------------------------------------------ 图片图注 ---
+def test_titled_image_becomes_figure_with_caption():
+    html = render_markdown('![示意图](/media/a.png "第一张架构图")').html
+    assert "<figure>" in html
+    assert "<figcaption>第一张架构图</figcaption>" in html
+    # 图注取代悬停提示：同一句话不该既当 title 又当图注
+    assert "title=" not in html
+
+
+def test_image_without_title_stays_plain():
+    html = render_markdown("![示意图](/media/a.png)").html
+    assert "<figure>" not in html
+    assert "<p><img" in html
+
+
+def test_inline_image_keeps_paragraph():
+    """图片与文字同段时不得升级成 figure：那会把整段文字塞进图注。"""
+    html = render_markdown('看这张图 ![示意图](/media/a.png "图注") 很有意思').html
+    assert "<figure>" not in html
+    assert "<figcaption>" not in html
+    assert "很有意思" in html
+
+
+def test_caption_is_escaped_exactly_once():
+    html = render_markdown('![x](/media/a.png "AT&T <b>粗</b>")').html
+    assert "AT&amp;T" in html
+    assert "&amp;amp;" not in html  # 双重转义会让图注里出现字面量 &amp;
+    assert "&lt;b&gt;" in html
+
+
+def test_link_title_is_not_a_caption():
+    # IMG_ONLY_P_RE 只认 <img>：链接的 title 必须原样保留
+    html = render_markdown('[链接](https://example.com "标题")').html
+    assert "<figcaption>" not in html
+    assert 'title="标题"' in html
+
+
+def test_caption_and_dimension_injection_compose():
+    """图注包装与尺寸注入两条后处理必须能叠加（顺序写反会丢 width/height）。"""
+    html = render_markdown(
+        '![x](/media/a.png "图注")', media_meta={"a.png": (800, 600, "")}
+    ).html
+    assert 'width="800"' in html
+    assert 'height="600"' in html
+    assert "<figcaption>图注</figcaption>" in html
+
+
+def test_alt_is_still_filled_by_media_lookup():
+    # 图注改造不能顺手吃掉「alt 为空时用媒体库 alt 兜底」这条既有能力
+    html = render_markdown(
+        "![](/media/a.png)", media_meta={"a.png": (0, 0, "媒体库里的说明")}
+    ).html
+    assert 'alt="媒体库里的说明"' in html

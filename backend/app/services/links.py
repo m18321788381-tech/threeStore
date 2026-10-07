@@ -94,15 +94,34 @@ async def load_media_meta(
     return {name: (w or 0, h or 0, a or "") for name, w, h, a in rows}
 
 
+async def render_markdown_preview(
+    session: AsyncSession,
+    content_md: str,
+    post_id: uuid.UUID | None = None,
+) -> tuple[str, list[dict], int]:
+    """按**发布时的同一条管线**渲染 Markdown，供后台编辑器实时预览。
+
+    为什么预览必须走后端渲染（而不是前端本地渲染）：
+      前端预览（react-markdown + highlight.js）与服务端保存时的渲染
+      （markdown-it + Pygments + 图片尺寸注入 + [[链接]] 解析）是两套实现，
+      作者在预览里看到的代码高亮配色、图注、公式容器、站内链接形态都跟最终
+      正文不一样 —— 典型的「所见非所得」。这里直接复用同一条管线，
+      两边不可能再分叉。
+
+    :param post_id: 正在编辑的文章 id（新建文章时为空），用于忽略 [[自引用]]。
+    """
+    resolver, _ = await build_wiki_resolver(session, post_id)
+    media_meta = await load_media_meta(session, content_md)
+    result = render_markdown(content_md, resolver, media_meta)
+    return result.html, [t.__dict__ for t in result.toc], result.reading_time
+
+
 async def render_post_content(
     session: AsyncSession,
     post: Post,
 ) -> tuple[str, list[dict], int]:
     """渲染文章正文（含 wiki 链接与站内图片尺寸），返回 (html, toc, reading_time)。"""
-    resolver, slug_to_id = await build_wiki_resolver(session, post.id)
-    media_meta = await load_media_meta(session, post.content_md)
-    result = render_markdown(post.content_md, resolver, media_meta)
-    return result.html, [t.__dict__ for t in result.toc], result.reading_time
+    return await render_markdown_preview(session, post.content_md, post.id)
 
 
 async def sync_post_links(session: AsyncSession, post: Post) -> list[uuid.UUID]:

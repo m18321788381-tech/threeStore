@@ -334,6 +334,13 @@ def _attr_value(tag: str, name: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _strip_attr(tag: str, name: str) -> str:
+    """删掉标签上的某个属性（连同它前面的空白），其余属性原样保留。"""
+    return re.sub(
+        r"\s+" + re.escape(name) + r"""\s*=\s*["'][^"']*["']""", "", tag, flags=re.I
+    )
+
+
 def _append_attrs(tag: str, additions: dict[str, str]) -> str:
     """把属性追加到 <img ...> 收尾之前，原有属性一律不动。"""
     body = tag[:-1] if tag.endswith(">") else tag
@@ -342,6 +349,40 @@ def _append_attrs(tag: str, additions: dict[str, str]) -> str:
     for name, value in additions.items():
         body += f' {name}="{value}"'
     return f"{body}>"
+
+
+# ---- 图片图注：![alt](src "图注") → <figure><img><figcaption>图注</figcaption></figure> ----
+# 只有「一张图独占一个段落」时才升级成 figure：正文里「图片 + 文字」混排是常态，
+# 把那一整段的文字塞进 figcaption 会改变作者原意。
+IMG_ONLY_P_RE = re.compile(r"<p>\s*(<img\s[^>]*?>)\s*</p>", re.I)
+
+
+def wrap_captioned_images(html_text: str) -> str:
+    """把带 title 的独立图片段落渲染成带图注的 <figure>。
+
+    为什么用 Markdown 原生的 title 位置承载图注（而不是另造语法）：
+      `![alt](src "图注")` 是标准 Markdown，任何编辑器与工具链都认识，
+      不必在正文里引入第二套图片语法；title 原本的可选语义（悬停提示）
+      在技术博客里几乎没人依赖，改成图注是净收益。
+
+    图注文本直接复用 bleach 已转义过的属性值，**不可再次 escape**，
+    否则 `&` 会被双重转义成 `&amp;amp;`。
+    """
+    if not html_text:
+        return html_text
+
+    def _repl(match: re.Match) -> str:
+        tag = match.group(1)
+        caption = _attr_value(tag, "title")
+        if not caption or not caption.strip():
+            return match.group(0)
+        # title 与图注重复，去掉它避免同一句话既当悬停提示又当图注
+        return (
+            f"<figure>{_strip_attr(tag, 'title')}"
+            f"<figcaption>{caption}</figcaption></figure>"
+        )
+
+    return IMG_ONLY_P_RE.sub(_repl, html_text)
 
 
 def inject_image_dimensions(
@@ -454,7 +495,10 @@ def render_markdown(
     # 5) 标题锚点 + TOC
     final_html, toc = _inject_heading_ids(clean_html)
 
-    # 6) 站内图片补 width/height/alt（必须在 bleach 之后：注入的属性不再过白名单，
+    # 6) 图片图注：![alt](src "图注") 升级为 <figure> + <figcaption>
+    final_html = wrap_captioned_images(final_html)
+
+    # 7) 站内图片补 width/height/alt（必须在 bleach 之后：注入的属性不再过白名单，
     #    这是安全的——值全部来自本地媒体表，不含用户可控的 HTML）
     final_html = inject_image_dimensions(final_html, media_meta or {})
 

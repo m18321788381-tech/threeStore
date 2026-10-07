@@ -381,6 +381,31 @@
   .group-title {
     @apply border-b border-border pb-2 text-[15px] font-semibold text-muted;
   }
+
+  /* ---------------------------------------------------------------- 编辑器 */
+  /* 工具栏按钮：hover 用背景色而非描边，密集图标排在一起时不会显得杂乱 */
+  .md-tool {
+    @apply inline-flex h-8 min-w-[2rem] items-center justify-center gap-1 rounded-btn px-1.5 text-xs font-medium text-muted transition-colors hover:bg-background hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted;
+  }
+  .md-tool-active {
+    @apply bg-accent-soft text-accent;
+  }
+  /* 分组分隔线 */
+  .md-tool-sep {
+    @apply mx-1 h-5 w-px shrink-0 bg-border;
+  }
+  /* 工具栏弹层（表格尺寸、表情、图片、链接、代码语言、大纲共用） */
+  .md-pop {
+    @apply absolute left-0 top-full z-30 mt-1 rounded-panel border border-border bg-card p-2.5 shadow-raised;
+  }
+  .md-pop-right {
+    @apply left-auto right-0;
+  }
+  /* 手机预览框：对标公众号右侧的手机预览，一眼能看出这是窄屏效果 */
+  .md-phone {
+    @apply mx-auto w-[375px] max-w-full rounded-[22px] border border-border bg-card px-4 py-5 shadow-panel;
+    border-top-width: 6px;
+  }
 }
 
 /* ------------------------------------------------------- Markdown 正文排版 */
@@ -453,6 +478,18 @@
 .prose-blog img {
   border-radius: 12px;
   margin-inline: auto;
+}
+/* 图片图注：后端把 ![alt](src "图注") 渲染成 <figure> + <figcaption>。
+   图注居中放在图片下方，比塞进 title 悬停提示更接近公众号的呈现方式。 */
+.prose-blog figure {
+  margin-inline: 0;
+}
+.prose-blog figcaption {
+  margin-top: 0.55em;
+  text-align: center;
+  font-size: 0.86em;
+  line-height: 1.5;
+  color: var(--fg-muted);
 }
 /* 灯箱：medium-zoom 的样式表只有 4 条规则，直接内联以避免多一个 CSS 请求，
    并把遮罩色改成跟随主题的深色，浅色/暗色下都不会刺眼 */

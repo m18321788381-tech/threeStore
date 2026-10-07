@@ -22,8 +22,8 @@ from app.models.comment import Comment
 from app.models.media import PostStat
 from app.models.post import Post
 from app.models.tag import Tag
-from app.schemas import PostCreate, PostUpdate, ok, paginate
-from app.services.links import render_post_content, sync_post_links
+from app.schemas import PostCreate, PostPreviewIn, PostPreviewOut, PostUpdate, ok, paginate
+from app.services.links import render_markdown_preview, render_post_content, sync_post_links
 from app.services.neighbours import find_neighbours
 from app.services.redirects import record_slug_change
 from app.services.serializers import post_detail, post_list_item
@@ -270,6 +270,28 @@ async def _render_and_sync(session: AsyncSession, post: Post) -> None:
     post.reading_time = reading_time
     await session.flush()
     await sync_post_links(session, post)
+
+
+@router.post("/preview")
+async def preview_post(
+    payload: PostPreviewIn,
+    session: AsyncSession = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    """后台编辑器实时预览。
+
+    与保存路径共用 `render_markdown_preview`（同一条渲染管线），因此预览里看到的
+    代码高亮、图注、公式/图表容器、[[站内链接]] 形态与发布后的正文完全一致。
+    仅管理员可用：预览会解析 [[链接]]，匿名放开等于把未发布文章的标题泄露出去。
+    """
+    html_text, toc, reading_time = await render_markdown_preview(
+        session,
+        payload.content_md or "",
+        _safe_uuid(payload.post_id, "post_id"),
+    )
+    return ok(
+        PostPreviewOut(html=html_text, toc=toc, reading_time=reading_time).model_dump()
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

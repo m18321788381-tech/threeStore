@@ -444,6 +444,12 @@ export function PostEditor({ postId }: { postId?: string }) {
         onChange={setContent}
         knownTitles={knownTitles}
         onUpload={upload}
+        postId={postId}
+        // Ctrl/⌘+S：与「存为草稿」按钮完全同一条路径，避免出现两套保存逻辑
+        onSaveDraft={() => {
+          if (save.isPending || !title.trim()) return;
+          save.mutate(0);
+        }}
       />
 
       <p className="text-meta text-muted">
