@@ -82,7 +82,7 @@ export async function SearchResults({ q, page }: { q: string; page: number }) {
               <span>{readingTimeLabel(post.reading_time)}</span>
             </div>
 
-            <h2 className="mt-1.5 text-[18px] font-bold leading-snug tracking-tight">
+            <h2 className="mt-1.5 text-heading-xs leading-snug tracking-tight">
               <Link href={`/posts/${post.slug}`} className="transition-colors hover:text-accent">
                 <Highlight text={post.title} terms={terms} />
               </Link>

@@ -47,7 +47,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="overlay-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={() => {
         if (!pending) onCancel();
       }}
@@ -57,7 +57,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-desc"
-        className="card w-full max-w-sm p-5"
+        className="dialog-enter card w-full max-w-sm p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="confirm-dialog-title" className="text-[15px] font-semibold text-foreground">

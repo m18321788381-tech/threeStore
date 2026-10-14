@@ -141,6 +141,14 @@
 
   ::selection {
     background: var(--accent-soft);
+    color: var(--fg);
+  }
+  /* 暗色主题下 accent-soft 太深，选中文字几乎看不出 */
+  .dark ::selection {
+    background: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .sepia ::selection {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
   }
 
   /* 滚动条 */
@@ -204,7 +212,7 @@
     @apply rounded-panel border border-border bg-card shadow-panel transition-colors;
   }
   .card-hover {
-    @apply hover:border-accent hover:shadow-sm hover:shadow-black/5;
+    @apply transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-raised;
   }
 
   /* ---------------------------------------------------------------- 标签 */
@@ -277,7 +285,11 @@
 
   /* ------------------------------------------------------------ 表单控件 */
   .input {
-    @apply w-full rounded-btn border border-border-strong bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted focus:border-accent;
+    @apply w-full rounded-btn border border-border-strong bg-card px-3 py-2 text-sm text-foreground transition-all placeholder:text-muted focus:border-accent;
+  }
+  .input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
   .field-label {
     @apply mb-1.5 block text-sm font-medium;
@@ -304,7 +316,7 @@
     @apply border-b border-border py-6 last:border-b-0;
   }
   .post-row-title {
-    @apply text-[22px] font-bold leading-snug tracking-tight transition-colors group-hover:text-accent;
+    @apply text-heading-sm leading-snug tracking-tight transition-colors group-hover:text-accent;
   }
 
   /* 提示块（原型 .callout）：4px 左强调边 + 柔和底色 */
@@ -352,7 +364,7 @@
     @apply mb-6 flex flex-wrap items-center justify-between gap-3;
   }
   .panel-title {
-    @apply text-[22px] font-bold tracking-tight;
+    @apply text-heading-sm tracking-tight;
   }
   .toolbar {
     @apply mb-5 flex flex-wrap items-center gap-2.5;
@@ -901,12 +913,12 @@
   animation: blink 1s steps(1) infinite;
 }
 
-/* 骨架屏 */
+/* 骨架屏：用 border-strong 确保三套主题下都有足够明暗对比 */
 .skeleton {
   background: linear-gradient(
     90deg,
     var(--surface) 25%,
-    var(--border) 37%,
+    var(--border-strong) 37%,
     var(--surface) 63%
   );
   background-size: 400% 100%;
@@ -920,6 +932,60 @@
   100% {
     background-position: 0 50%;
   }
+}
+
+/* ------------------------------------------------------------ 弹层动画 */
+/* 对话框与下拉面板的入场：opacity + 微缩放，200ms 内完成，不拖泥带水 */
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.dialog-enter {
+  animation: dialog-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 遮罩层淡入 */
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.overlay-fade-in {
+  animation: overlay-fade-in 0.2s ease both;
+}
+
+/* 下拉菜单：比对话框更轻快，150ms */
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.menu-enter {
+  animation: menu-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 移动端折叠面板：用 grid-rows 0fr→1fr 的 trick 实现高度自适应展开 */
+.collapse-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.collapse-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.collapse-panel > .collapse-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ------------------------------------------------------------ 动效偏好 */

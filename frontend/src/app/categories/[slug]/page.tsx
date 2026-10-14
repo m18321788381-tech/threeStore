@@ -57,8 +57,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       ) : (
         <>
           <div className="grid gap-4">
-            {data.items.map((post) => (
-              <PostCard key={post.id} post={post} />
+            {data.items.map((post, i) => (
+              <PostCard key={post.id} post={post} index={i} />
             ))}
           </div>
           <Pagination

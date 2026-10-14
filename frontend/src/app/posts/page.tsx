@@ -40,8 +40,8 @@ async function PostList({ page }: { page: number }) {
         共 <b className="font-semibold tabular-nums text-foreground">{data.total}</b> 篇
       </p>
       <div>
-        {data.items.map((post) => (
-          <PostCard key={post.id} post={post} />
+        {data.items.map((post, i) => (
+          <PostCard key={post.id} post={post} index={i} />
         ))}
       </div>
       <Pagination basePath="/posts" page={data.page} pages={data.pages} />

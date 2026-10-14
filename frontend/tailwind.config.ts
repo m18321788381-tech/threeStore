@@ -34,6 +34,11 @@ const config: Config = {
         body: ["0.9375rem", { lineHeight: "1.7" }],
         meta: ["0.8125rem", { lineHeight: "1.5" }],
         lead: ["1.0625rem", { lineHeight: "1.7" }],
+        /* 语义化标题阶梯：替代散落的 text-[22px] / text-[27px] 等魔法数字 */
+        "heading-lg": ["2rem", { lineHeight: "1.25", fontWeight: "700" }],       /* 32px 页面大标题 */
+        "heading-md": ["1.6875rem", { lineHeight: "1.25", fontWeight: "700" }],  /* 27px 文章标题 */
+        "heading-sm": ["1.375rem", { lineHeight: "1.3", fontWeight: "700" }],    /* 22px 列表行标题 */
+        "heading-xs": ["1.1875rem", { lineHeight: "1.35", fontWeight: "700" }],  /* 19px 区块标题 */
       },
       fontFamily: {
         sans: [
@@ -92,10 +97,28 @@ const config: Config = {
           "0%, 49%": { opacity: "1" },
           "50%, 100%": { opacity: "0" },
         },
+        "dialog-enter": {
+          from: { opacity: "0", transform: "translateY(4px) scale(0.97)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "overlay-fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "menu-enter": {
+          from: { opacity: "0", transform: "translateY(-4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-in-up": "fade-in-up 0.4s ease-out both",
         blink: "blink 1s steps(1) infinite",
+        "dialog-enter": "dialog-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "overlay-fade-in": "overlay-fade-in 0.2s ease both",
+        "menu-enter": "menu-enter 0.15s cubic-bezier(0.16, 1, 0.3, 1) both",
+      },
+      transitionTimingFunction: {
+        out: "cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

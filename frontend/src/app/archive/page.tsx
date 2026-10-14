@@ -27,7 +27,7 @@ export default async function ArchivePage() {
     <div>
       <Breadcrumb items={[{ name: "归档" }]} />
       <header className="page-head">
-        <h1 className="text-[26px] font-bold tracking-tight">
+        <h1 className="text-heading-sm tracking-tight">
           归档 · 共 {data?.total ?? 0} 篇文章
         </h1>
         <p className="page-desc">按发布时间倒序排列，点击标题直达原文。</p>

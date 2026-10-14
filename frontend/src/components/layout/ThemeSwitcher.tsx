@@ -122,7 +122,7 @@ export function ThemeSwitcher({ className }: { className?: string }) {
           role="menu"
           aria-label="选择主题"
           onKeyDown={onMenuKeyDown}
-          className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-modal border border-border bg-card shadow-raised"
+          className="menu-enter absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-modal border border-border bg-card shadow-raised"
         >
           {THEMES.map((item, index) => {
             const selected = item.value === current.value;

@@ -241,11 +241,108 @@ export function GraphCanvas({ data }: { data: GraphData }) {
       setHovered(null);
     };
 
+    /* ---- 触屏支持：映射到与鼠标相同的 pan/drag/click 逻辑 ---- */
+    const toWorldTouch = (touch: Touch) => {
+      const rect = canvas.getBoundingClientRect();
+      const t = transformRef.current;
+      return {
+        x: (touch.clientX - rect.left - t.x) / t.k,
+        y: (touch.clientY - rect.top - t.y) / t.k,
+      };
+    };
+
+    let touchDragNode: Node | null = null;
+    let touchPanning = false;
+    let lastTouch: Touch | null = null;
+    let touchMoved = false;
+    let pinchStartDist = 0;
+    let pinchStartK = 1;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const { x, y } = toWorldTouch(touch);
+        const hit = pick(x, y);
+        touchMoved = false;
+        if (hit) {
+          touchDragNode = hit;
+          simulation.alphaTarget(0.25).restart();
+        } else {
+          touchPanning = true;
+        }
+        lastTouch = touch;
+      } else if (e.touches.length === 2) {
+        /* 双指缩放 */
+        touchDragNode = null;
+        touchPanning = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStartDist = Math.hypot(dx, dy);
+        pinchStartK = transformRef.current.k;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      if (e.touches.length === 1 && lastTouch) {
+        const touch = e.touches[0];
+        const { x, y } = toWorldTouch(touch);
+        if (touchDragNode) {
+          touchDragNode.fx = x;
+          touchDragNode.fy = y;
+          touchMoved = true;
+        } else if (touchPanning) {
+          const t = transformRef.current;
+          t.x += touch.clientX - lastTouch.clientX;
+          t.y += touch.clientY - lastTouch.clientY;
+          touchMoved = true;
+          draw();
+        }
+        lastTouch = touch;
+      } else if (e.touches.length === 2 && pinchStartDist > 0) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0) {
+          const factor = dist / pinchStartDist;
+          const newK = Math.min(3, Math.max(0.35, pinchStartK * factor));
+          const rect = canvas.getBoundingClientRect();
+          const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+          const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+          const t = transformRef.current;
+          t.x = cx - ((cx - t.x) * newK) / t.k;
+          t.y = cy - ((cy - t.y) * newK) / t.k;
+          t.k = newK;
+          draw();
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchDragNode) {
+        if (!touchMoved) {
+          router.push(`/posts/${touchDragNode.id}`);
+        }
+        touchDragNode.fx = null;
+        touchDragNode.fy = null;
+        touchDragNode = null;
+        simulation.alphaTarget(0);
+      }
+      touchPanning = false;
+      lastTouch = null;
+      if (e.touches.length === 0) {
+        pinchStartDist = 0;
+      }
+    };
+
     canvas.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     canvas.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("mouseleave", onLeave);
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd, { passive: false });
     window.addEventListener("resize", resize);
 
     /* 切换主题时 CSS 变量会变，但 canvas 不会自动重绘，这里显式监听根节点 class */
@@ -265,6 +362,9 @@ export function GraphCanvas({ data }: { data: GraphData }) {
       window.removeEventListener("mouseup", onMouseUp);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("mouseleave", onLeave);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("resize", resize);
     };
   }, [nodes, links, hovered, router]);
@@ -295,7 +395,13 @@ export function GraphCanvas({ data }: { data: GraphData }) {
         ref={wrapRef}
         className="relative h-[420px] w-full overflow-hidden rounded-panel border border-border bg-surface/40 sm:h-[560px]"
       >
-        <canvas ref={canvasRef} className="block h-full w-full" />
+        <canvas
+          ref={canvasRef}
+          className="block h-full w-full"
+          role="img"
+          aria-label={`知识网络图谱，共 ${data.nodes.length} 篇文章与 ${data.edges.length} 条链接。下方列表可直接浏览引用最多的笔记。`}
+          tabIndex={0}
+        />
         {hovered && (
           <div className="pointer-events-none absolute bottom-3 left-3 rounded-btn border border-border bg-background/95 px-3 py-2 text-xs shadow-sm">
             <b>{hovered.title}</b>
@@ -310,7 +416,7 @@ export function GraphCanvas({ data }: { data: GraphData }) {
       </div>
 
       <p className="text-xs text-muted">
-        滚轮缩放 · 拖拽平移 · 拖动节点固定位置 · 单击节点跳转文章
+        滚轮/双指缩放 · 拖拽平移 · 拖动节点固定位置 · 单击/轻触节点跳转文章
       </p>
     </div>
   );

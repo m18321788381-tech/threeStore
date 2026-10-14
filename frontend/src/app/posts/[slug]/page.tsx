@@ -148,7 +148,7 @@ export default async function PostPage({ params }: Props) {
             <span className="tabular-nums">{post.view_count} 次阅读</span>
           </div>
 
-          <h1 className="mt-3.5 text-[27px] font-bold leading-tight tracking-tight sm:text-[32px]">
+          <h1 className="mt-3.5 text-heading-md leading-tight tracking-tight sm:text-[32px]">
             {post.title}
           </h1>
 

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import type { TocItem } from "@/types";
 import { TOC } from "./TOC";
-import { cn } from "@/lib/utils";
 
 /* 移动端目录。
 
@@ -38,11 +37,15 @@ export function MobileTOC({ items }: { items: TocItem[] }) {
         <span>本页目录</span>
         <span className="text-muted tabular-nums">({items.length})</span>
       </button>
-      {open && (
-        <div className={cn("mt-3 rounded-panel border border-border bg-card p-3")}>
-          <TOC items={items} />
+      <div className="collapse-panel" data-open={open}>
+        <div className="collapse-inner">
+          {open && (
+            <div className="mt-3 rounded-panel border border-border bg-card p-3">
+              <TOC items={items} />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

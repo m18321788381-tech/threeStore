@@ -32,8 +32,8 @@ async function PostList({ page }: { page: number }) {
   return (
     <>
       <div>
-        {data.items.map((post) => (
-          <PostCard key={post.id} post={post} />
+        {data.items.map((post, i) => (
+          <PostCard key={post.id} post={post} index={i} />
         ))}
       </div>
       <Pagination basePath="/" page={data.page} pages={data.pages} />
@@ -139,17 +139,31 @@ export default async function HomePage({
   const currentPage = Math.max(1, Number(page) || 1);
 
   return (
-    <div className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <section className="min-w-0 max-w-content">
-        <h1 className="sr-only">最新文章</h1>
-        <Suspense fallback={<PostListSkeleton />}>
-          <PostList page={currentPage} />
-        </Suspense>
+    <>
+      {/* Hero：克制的品牌锚点。新访客到达首页时能在 3 秒内判断
+          「这是什么站、是谁的博客」。不使用大型 banner，符合
+          该站「内容优先、克制留白」的设计语言。 */}
+      <section className="mb-10 max-w-content animate-fade-in-up">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          {siteConfig.title}
+        </h1>
+        <p className="mt-2 text-lead leading-relaxed text-muted">
+          {siteConfig.bio}
+        </p>
       </section>
 
-      <Suspense fallback={<div className="skeleton h-64" />}>
-        <Sidebar />
-      </Suspense>
-    </div>
+      <div className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <section className="min-w-0 max-w-content">
+          <h2 className="sr-only">最新文章</h2>
+          <Suspense fallback={<PostListSkeleton />}>
+            <PostList page={currentPage} />
+          </Suspense>
+        </section>
+
+        <Suspense fallback={<div className="skeleton h-64" />}>
+          <Sidebar />
+        </Suspense>
+      </div>
+    </>
   );
 }

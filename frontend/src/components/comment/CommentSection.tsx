@@ -210,8 +210,8 @@ export function CommentSection({ slug }: { slug: string }) {
   const result = (data || { items: [], total: 0, pages: 0 }) as Paginated<CommentNode>;
 
   return (
-    <section id="comments" className="mt-14 border-t-2 border-foreground pt-7">
-      <h2 className="text-[19px] font-bold tracking-tight">评论</h2>
+    <section id="comments" className="mt-14 border-t border-border pt-7">
+      <h2 className="text-heading-xs tracking-tight">评论</h2>
       <p className="mb-6 mt-1 text-meta text-muted">
         {result.total > 0 ? `共 ${result.total} 条 · ` : ""}发言前请先阅读社区约定，提交后需博主审核。
       </p>

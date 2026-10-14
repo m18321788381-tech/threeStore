@@ -3,9 +3,12 @@ import type { PostListItem } from "@/types";
 import { formatDate, readingTimeLabel } from "@/lib/utils";
 
 /** 列表行：对齐设计稿 V-01 .post-card —— 用分隔线成组，不做卡片阴影。 */
-export function PostCard({ post }: { post: PostListItem }) {
+export function PostCard({ post, index = 0 }: { post: PostListItem; index?: number }) {
+  /* 列表入场动画：前 6 项依次淡入（stagger），之后的不再延迟避免长列表等待 */
+  const delay = index < 6 ? `${index * 0.06}s` : undefined;
+
   return (
-    <article className="post-row group">
+    <article className="post-row group animate-fade-in-up" style={delay ? { animationDelay: delay } : undefined}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-meta text-muted">
         {post.is_pinned && <span className="badge badge-accent">置顶</span>}
         {post.category && (
@@ -35,6 +38,7 @@ export function PostCard({ post }: { post: PostListItem }) {
           <Link
             key={tag.slug}
             href={`/tags/${tag.slug}`}
+            prefetch={false}
             className="text-xs text-muted transition-colors hover:text-accent"
           >
             #{tag.name}

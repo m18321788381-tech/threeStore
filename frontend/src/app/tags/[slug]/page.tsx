@@ -51,8 +51,8 @@ export default async function TagPage({ params, searchParams }: Props) {
       ) : (
         <>
           <div className="grid gap-4">
-            {data.items.map((post) => (
-              <PostCard key={post.id} post={post} />
+            {data.items.map((post, i) => (
+              <PostCard key={post.id} post={post} index={i} />
             ))}
           </div>
           <Pagination basePath={`/tags/${slug}`} page={data.page} pages={data.pages} />

@@ -81,8 +81,12 @@ export function Header() {
         </div>
       </div>
 
-      {open && (
-        <nav className="border-t border-border bg-background md:hidden" aria-label="移动导航">
+      <nav
+        className="collapse-panel border-t border-border bg-background md:hidden"
+        data-open={open}
+        aria-label="移动导航"
+      >
+        <div className="collapse-inner">
           <div className="container-page grid gap-1 py-3">
             {siteConfig.nav.map((item) => {
               const active =
@@ -110,8 +114,8 @@ export function Header() {
               后台
             </Link>
           </div>
-        </nav>
-      )}
+        </div>
+      </nav>
     </header>
   );
 }

@@ -14,7 +14,7 @@ export function PostPager({ prev, next }: { prev: Ref | null; next: Ref | null }
           </p>
         </Link>
       ) : (
-        <span />
+        <span aria-hidden className="hidden sm:block" />
       )}
       {next && (
         <Link
