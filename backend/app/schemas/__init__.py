@@ -15,6 +15,8 @@ from app.schemas.misc import (
 )
 from app.schemas.post import (
     LinksOut,
+    PolishIn,
+    PolishOut,
     PostCreate,
     PostDetail,
     PostListItem,
@@ -38,7 +40,7 @@ __all__ = [
     "ApiResponse", "ORMModel", "Paginated", "ok", "paginate",
     "LoginIn", "RefreshIn", "TokenOut", "UserOut", "ChangePasswordIn",
     "PostCreate", "PostUpdate", "PostOut", "PostListItem", "PostDetail",
-    "PostPreviewIn", "PostPreviewOut",
+    "PostPreviewIn", "PostPreviewOut", "PolishIn", "PolishOut",
     "RefOut", "TocItemOut", "LinksOut",
     "CategoryCreate", "CategoryUpdate", "CategoryOut",
     "TagCreate", "TagUpdate", "TagOut",

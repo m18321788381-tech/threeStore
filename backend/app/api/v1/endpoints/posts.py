@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import Pagination, get_current_admin, optional_user, pagination_params
+from app.core.config import settings
 from app.core.enums import CommentStatus, PostStatus
 from app.db.session import get_db
 from app.models.category import Category
@@ -22,13 +23,23 @@ from app.models.comment import Comment
 from app.models.media import PostStat
 from app.models.post import Post
 from app.models.tag import Tag
-from app.schemas import PostCreate, PostPreviewIn, PostPreviewOut, PostUpdate, ok, paginate
+from app.schemas import (
+    PostCreate,
+    PostPreviewIn,
+    PostPreviewOut,
+    PostUpdate,
+    PolishIn,
+    PolishOut,
+    ok,
+    paginate,
+)
 from app.services.links import render_markdown_preview, render_post_content, sync_post_links
 from app.services.neighbours import find_neighbours
 from app.services.redirects import record_slug_change
 from app.services.serializers import post_detail, post_list_item
 from app.services.seo import invalidate_seo_cache
 from app.services.slug import slugify_title, unique_slug
+from app.services.ai_polish import PolishError, polish
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -292,6 +303,30 @@ async def preview_post(
     return ok(
         PostPreviewOut(html=html_text, toc=toc, reading_time=reading_time).model_dump()
     )
+
+
+@router.post("/polish")
+async def polish_post(
+    payload: PolishIn,
+    admin=Depends(get_current_admin),
+):
+    """AI 润色正文。
+
+    仅管理员可用：润色会调用外部 LLM，放任匿名调用既消耗配额又有滥用风险。
+    未配置 `AI_API_KEY` 时返回 503，前端据此禁用按钮；调用失败统一 502。
+    """
+    if not settings.ai_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI 润色未配置，请在 .env 中设置 AI_API_KEY 与 AI_MODEL 后重启服务",
+        )
+    try:
+        result = await polish(payload.content_md or "", payload.style)
+    except PolishError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
+    return ok(PolishOut(content_md=result).model_dump())
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

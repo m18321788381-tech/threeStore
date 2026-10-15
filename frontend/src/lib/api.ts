@@ -187,6 +187,13 @@ export const api = {
       "/posts/preview",
       body
     ),
+  /**
+   * AI 润色正文：后端调用兼容 OpenAI 的 LLM 改写文字表达，
+   * 保留 Markdown 结构 / 代码块 / [[双向链接]] 不变。
+   * 未配置 AI_API_KEY 时后端返回 503，调用方据此禁用按钮。
+   */
+  polishPost: (body: { content_md: string; style: string }) =>
+    request<{ content_md: string }>("POST", "/posts/polish", body),
 
   /* 分类 / 标签 */
   categories: () => request<Category[]>("GET", "/categories"),

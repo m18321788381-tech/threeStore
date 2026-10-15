@@ -116,3 +116,17 @@ class PostOut(ORMModel):
 class LinksOut(BaseModel):
     outbound: list[dict] = Field(default_factory=list)
     backlinks: list[dict] = Field(default_factory=list)
+
+
+class PolishIn(BaseModel):
+    """AI 润色入参：仅正文 Markdown。"""
+
+    content_md: str = Field(min_length=0, max_length=100_000)
+    # concise|vivid|professional|casual|expand；非法值由服务层回退为 concise
+    style: str = "concise"
+
+
+class PolishOut(BaseModel):
+    """AI 润色结果：润色后的正文 Markdown（原文结构与语法保持不变）。"""
+
+    content_md: str = ""

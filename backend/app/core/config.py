@@ -117,6 +117,14 @@ class Settings(BaseSettings):
     SEO_CACHE_TTL: int = 3600  # 秒：RSS/Sitemap 缓存有效期
     RSS_TTL_MINUTES: int = 60  # RSS <ttl>：提示阅读器多久回抓一次（分钟）
 
+    # ---------- AI 润色（可选；AI_API_KEY 留空则功能关闭） ----------
+    # 接入任何兼容 OpenAI /chat/completions 的服务：DeepSeek、通义、Moonshot、
+    # OpenAI 官方等均可，只需填对 base_url / api_key / model 三项。
+    AI_BASE_URL: str = "https://api.deepseek.com/v1"
+    AI_API_KEY: str = ""  # 留空 = 未配置，后端 /polish 返回 503，前端禁用按钮
+    AI_MODEL: str = "deepseek-chat"
+    AI_TIMEOUT: int = 60  # 秒：LLM 响应上限
+
     # ---------- Logging ----------
     LOG_LEVEL: str = "DEBUG"
 
@@ -196,6 +204,11 @@ class Settings(BaseSettings):
     @property
     def sensitive_words_list(self) -> list[str]:
         return [w.strip() for w in self.COMMENT_SENSITIVE_WORDS.split(",") if w.strip()]
+
+    @property
+    def ai_enabled(self) -> bool:
+        """AI 润色是否可用：API Key 与 Model 都非空即视为已配置。"""
+        return bool(self.AI_API_KEY.strip() and self.AI_MODEL.strip())
 
     docs_enabled: bool = Field(default=True)
 

@@ -53,6 +53,12 @@ export type EditorToolbarProps = {
   onUndo: () => void;
   onRedo: () => void;
   onOpenShortcuts: () => void;
+  /** AI 润色：打开风格选择弹层 */
+  onPolish: () => void;
+  /** AI 润色进行中 */
+  polishing: boolean;
+  /** AI 润色不可用（未配置 / 正文为空） */
+  polishDisabled: boolean;
   /** 右侧插槽：模式切换 / 设备预览 / 沉浸模式等布局控件 */
   children?: ReactNode;
 };
@@ -150,6 +156,9 @@ export function EditorToolbar({
   onUndo,
   onRedo,
   onOpenShortcuts,
+  onPolish,
+  polishing,
+  polishDisabled,
   children,
 }: EditorToolbarProps) {
   const [pop, setPop] = useState<"" | "table" | "emoji" | "link" | "image" | "code">("");
@@ -427,6 +436,15 @@ export function EditorToolbar({
         onClick={onWiki}
       >
         <span className="font-mono text-[11px]">[[ ]]</span>
+      </ToolButton>
+
+      <ToolButton
+        label="AI 润色"
+        title="AI 润色：改写文字表达，保留 Markdown 结构与代码块；弹窗对比后确认替换"
+        disabled={polishing || polishDisabled}
+        onClick={onPolish}
+      >
+        {polishing ? <span className="text-[11px]">润色中…</span> : <span className="text-[11px]">✨ 润色</span>}
       </ToolButton>
 
       <div className="relative">

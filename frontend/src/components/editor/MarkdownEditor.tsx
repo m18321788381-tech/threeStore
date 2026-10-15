@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +29,7 @@ import { htmlToMarkdown, shouldConvertHtml } from "@/lib/htmlToMarkdown";
 import { EditorToolbar, type InlineKind } from "./EditorToolbar";
 import { PreviewPane, type PreviewState } from "./PreviewPane";
 import { Popover } from "./Popover";
+import { PolishDialog } from "./PolishDialog";
 import { CollapseIcon, ExpandIcon } from "./icons";
 import type { TocItem } from "@/types";
 
@@ -149,6 +151,46 @@ export function MarkdownEditor({
     toc: [],
   });
   const [history, setHistory] = useState({ canUndo: false, canRedo: false });
+
+  // ---- AI 润色 ----
+  const [polishOpen, setPolishOpen] = useState(false);
+  const [polishStyle, setPolishStyle] = useState("concise");
+  const [polishResult, setPolishResult] = useState("");
+  const [polishError, setPolishError] = useState("");
+  const polishMutation = useMutation({
+    mutationFn: (vars: { content_md: string; style: string }) =>
+      api.polishPost(vars),
+    onSuccess: (data) => {
+      setPolishResult(data.content_md);
+      setPolishError("");
+    },
+    onError: (err: Error) => {
+      setPolishError(err.message);
+    },
+  });
+
+  const runPolish = (style: string) => {
+    if (!value.trim()) return;
+    polishMutation.mutate({ content_md: value, style });
+  };
+
+  const openPolish = () => {
+    setPolishOpen(true);
+    setPolishError("");
+    runPolish(polishStyle);
+  };
+
+  const changePolishStyle = (next: string) => {
+    setPolishStyle(next);
+    runPolish(next);
+  };
+
+  const acceptPolish = () => {
+    if (!polishResult) return;
+    pushSnapshot(value, false);
+    onChange(polishResult);
+    setPolishOpen(false);
+  };
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -644,6 +686,9 @@ export function MarkdownEditor({
         onUndo={undo}
         onRedo={redo}
         onOpenShortcuts={() => setShortcutsOpen(true)}
+        onPolish={openPolish}
+        polishing={polishMutation.isPending}
+        polishDisabled={!value.trim()}
       >
         <div className="relative">
           <button
@@ -860,6 +905,19 @@ export function MarkdownEditor({
           </div>
         </div>
       )}
+
+      <PolishDialog
+        open={polishOpen}
+        original={value}
+        polished={polishResult}
+        loading={polishMutation.isPending}
+        error={polishError}
+        style={polishStyle}
+        onStyleChange={changePolishStyle}
+        onAccept={acceptPolish}
+        onRetry={() => runPolish(polishStyle)}
+        onClose={() => setPolishOpen(false)}
+      />
     </div>
   );
 }
